@@ -14,18 +14,20 @@ knitr::opts_chunk$set(echo = TRUE)
         
 This script helps you to manipulate and analyze raw data from electrophysiological recordings of plants made with the software LabScribe. It analyzes SWP traces and determines 6 different parameters on which statistics can be run. These parameters are:
 
-  maxHyperpol - Maximum voltage in initial hyperpolarization stage. 
-  maxDepol    - Minimum volage in the big depolarization stage
-  maxRepol    - Maximum voltage in the hyperpolarization stage after depolarization
-  maxHyperpol2- Amplitude of peak relative to final baseline
-  bl2         - Final baseline after SWP is finished
-  depDur      - Time between the followint two time points: 
-                I) @ middle voltage between initial baseline and maxDepol.
-                II) @ middle voltage between maxDepol and second baseline.
+  hyperpol.amplitude1 - Hyperpolarization amplitude from first baseline to peak hyperpol 
+  depol.amplitude     - Depolarization amplitude from peak hyperpol to peak depol.
+  repol.amplitude     - Repolarization amplitude from second baseline to peak repolarization.
+  min.depol.rate      - Minimum peak of slope in the depolarization phase.
+  max.hyperpol.rate   - Maximum peak of slope in the first hyperpol phase.
+  bl2                 - Final baseline after SWP is finished
+  depDur              - Time between the following two time points: 
+                        I) @ time of min.depol.rate
+                        II) @ time of middle voltage between peak repolarization and peak depolarization
                   
+    
     INPUT:
  .txt files in a folder with the following structure.
-Data for one batch of recordings regardless of the amount of genotypes analyzed. All the traces from plants that grew together and were recorded in what the experimenter considers the same batch.
+Data for one experiment of recordings regardless of the amount of genotypes analyzed. All the traces from plants that grew together and were recorded together are considered to be one experiment.
 
 This raw data should be in .txt files, as exported from LabScribe, and contained in one or multiple "YYMMDD" folder(s). 
           Data about the experiment is extracted from the leaf 8 column name. So the columns that correspond to the electrodes in the original .txt file NEED to be named in the following structure for the code to manipulate it:
@@ -69,8 +71,8 @@ If necessary to close the program and continue later, do it after finishing one 
          Steps:
       1. Function and library loading (Run every time you start the program)
       2. Load and convert the data.
-      3. Pick and analyze summaryzed traces.
-      4. Plot and run statistics on data parameters.
+      3. Pick, trim and analyze summaryzed traces.
+      4. Plot and run statistics on calculated parameters.
       
 Technical guidelines. 
   - For running a chunk click on the green arrow on the right.
@@ -86,6 +88,8 @@ https://rmarkdown.rstudio.com/authoring_quick_tour.html
 1. Function and library loading
 
 - Run this chunk once every time you start the program.
+If you don't have the packages installed in your computer do it by typing in the console:
+install.packages("name of package")
 ```{r}
 library(ggplot2)
 library(tidyr)
@@ -94,8 +98,9 @@ library(signal)
 library(dplyr)
 library(plotrix)
 Parameters = c("hyperpol.amplitude1", 
-               "depol.amplitude", 
-               "maxRepol", 
+               "depol.amplitude",
+               "min.depol.rate",
+               "max.hyperpol.rate",
                "repol.amplitude", 
                "bl2",
                "depDur")
@@ -163,6 +168,15 @@ AmIDone <- function(file){
     }
   return(c(pendingList))
   
+}
+calculateslope <- function(vector) {
+  slopetrace = NULL
+  for( i in 2:length(vector)){
+    slopei = vector[i]-vector[i-1]
+    slopetrace = append(slopetrace, slopei)  
+  }
+  slopetrace = append(slopetrace, slopetrace[length(slopetrace)])
+  return(slopetrace)
 }
 findSWPvalues <- function(trace, plant){
   ### Set reference time 0 when stimulus is applied: either at the first F1 value or or at the first maximum value.
@@ -232,16 +246,26 @@ findSWPvalues <- function(trace, plant){
   
   
   
-                        ### maxDepol/2 frame
+                        ### minDepolrate frame
   ### Find Half maximum to depolarization peak     
-  halfDepol =  (maxDepol - bl) / 2 # Find halfmax Voltage
-    # to find half max frame, substract the halfMax V from the trace and pick the closest to 0.
-    # focus on the chunk between stim and max
-  depolTrace = trace[ (stimFrame+1) : depolFrame  ] 
-  HalfDepolframe = min (
-    which (  abs((depolTrace)-halfDepol ) == min( abs((depolTrace)-halfDepol))  )  ## Find the time at Halfdepol
-  ) #+ stimFrame 
+  halfDepol =  maxDepol / 2 # Find halfmax Voltage. 
+  # find the peak slope at depol part of the trace
+  # focus on the chunk between stim and max
+  depolTrace = trace[ (stimFrame+10) : depolFrame  ]  
+  depoltrace.firstderivative = calculateslope(depolTrace)
+  min.depol.rate =  min(depoltrace.firstderivative)
+  HalfDepolframe = min( which(depoltrace.firstderivative == min.depol.rate) )+9
+# to find half max frame, substract the halfMax V from the trace and pick the closest to 0.
+  # HalfDepolframe = min (
+  #   which (  abs((depolTrace)-halfDepol ) == min( abs((depolTrace)-halfDepol))  )  ## Find the time at Halfdepol
+  # ) #+ stimFrame 
   
+  
+  
+                      ### max hyperpol rate
+  max.hyperpol.rate = max(depoltrace.firstderivative)
+  ### Save time of max slope
+  max.slope.frame = min( which(depoltrace.firstderivative == max.hyperpol.rate) )+9
   
   
   
@@ -262,7 +286,7 @@ findSWPvalues <- function(trace, plant){
   
   
                         ### maxRepol/2 frame
-  halfRepol = bl2 + (maxDepol - bl2)/2# the voltage value  FFIX THIS
+  halfRepol = maxRepol + ((maxDepol-maxRepol)/2) # bl2 + (maxDepol - bl2)/2 # 
   halfRepolframe = which( abs(repolTrace-halfRepol) == min (abs(repolTrace-halfRepol))  )   + depolFrame - stimFrame
   
 
@@ -277,8 +301,11 @@ findSWPvalues <- function(trace, plant){
   bl,
   maxDepol,
   hyperpol.amplitude1,
+  max.hyperpol.rate,
+  max.slope.frame,
   maxHyperpol,
   HalfDepolframe,
+  min.depol.rate,
   depol.amplitude,
   halfRepolframe,
   maxRepol, 
@@ -375,6 +402,7 @@ plotAndAnalyze <- function(genotypeFile){
             plot(x = trace$Seconds, y = trace$V, type = "l", main = plotTitle ) +
             abline(h = SWPvalues$bl, col="black", lty = 2) +
             abline(v = SWPvalues$HalfDepolframe, col="red") +
+            abline(v = SWPvalues$max.slope.frame, col="red") +
             abline(v = SWPvalues$halfRepolframe, col="green") +
             abline(h = SWPvalues$maxDepol, col = "red") +
             abline(h = SWPvalues$maxHyperpol, col = "blue") +
@@ -388,7 +416,7 @@ plotAndAnalyze <- function(genotypeFile){
           
           
   #### Save or not
-          if(SWPvalues$depol.amplitude > -10){
+          if(abs(SWPvalues$depol.amplitude) < 10){
             answer <- readline (prompt="NO RESPONSE! save as failed trace? [y];[n]    ")
             if(answer == "y"){
               SWPvalues$depDur = NA
@@ -425,6 +453,8 @@ plotAndAnalyze <- function(genotypeFile){
               plot(x = trace$Seconds, y = trace$V, type = "l", main = plotTitle) +
                 abline(h = SWPvalues$bl, col="black", lty = 2) +
                 abline(v = SWPvalues$HalfDepolframe, col="red") +
+                abline(v = SWPvalues$max.slope.frame, col="red") +
+                
                 abline(v = SWPvalues$halfRepolframe, col="green") +
                 abline(h = SWPvalues$maxDepol, col = "red") +
                 abline(h = SWPvalues$maxHyperpol, col = "blue") +
@@ -473,19 +503,27 @@ print("Continue with step 2.1 or where you left")
 
 
 2. Convert the data from Labscribe into dataframe for analysis.
-Create a folder with the name of your election and save there the modified data as >genotype<.csv files. 
+Create a folder with the name of your election. Here all the output will be saved.
 
-2.1. Write your folder's name in the batch variable
+2.1. Write your folder's name in the foldername variable. 
+     Wrire your control group in the controlgroup variable. This is the control condition Example. Col0 if the treatment is different genotypes   
+                   Mannitol if the treatment is different drugs 
 
                              EDIT THE FOLDER NAME HERE
 ```{r}
-foldername = "almt5.1-221114.15.16-2.0" # Replace the text in "" with the name you want your folder to have.
+foldername = "almt5-1-220926" # Replace the text in "" with the name you want your folder to have.
+# What is your control group?
+controlgroup =  "Col0" # "Col0.Mannitol1mM" #  
+#####
 batchFolder = paste(home,foldername,sep="/")
-print("Continue with step 2.2")
+print("Continue with step 2.2") ###
 ```
 
 2.2. Run this to extract the data and save it in a folder with the name previously given. Ignore the errors that are shown at the end. This is due to the pedal (F1) marks in the traces. Check that you have the >genotype<.csv files in the folder that you created in the last step and continue with step 3.
+
 If this stops with an error instead of a success message, the file last printed does not have the proper formating. Check that column names fit the INPUT conditions above.
+
+If you run this chunk for a second time, make sure to erase the files created in the previous run. Otherwise your traces will be duplicated in the same file.
 ```{r}
 ## Load file names
 setwd(home)
@@ -654,12 +692,6 @@ setwd(home)
 4.1.
 Plot and save one violin plot for each parameter quantified including all genotypes recorded.
 ```{r}
-
-### OMIT 0 from FAILED traces
-# data is duplicated
-
-
-
 setwd(batchFolder)
 # Open all the "Summary" files in the folder.
 SummaryData = NULL
@@ -692,17 +724,17 @@ for ( g in unique(SummaryData$Genotype) ){ # pick genotype
       
       # Mann-Whitney U test.
       WM =  wilcox.test( x= data,
-                   y=dplyr::filter(SummaryData,Genotype=="Col0" & Leaf==l)[,v],
+                   y=dplyr::filter(SummaryData,Genotype==controlgroup & Leaf==l)[,v],
                    paired = FALSE,
                    alternative = "t", # alternative hypothesis is two sided.
                    mu = 0 ) # Ho is that both samples distribution location don't shift. i.e. shift by mu=o
       WM = round( WM$p.value, 3)
       
       # Kruskal-wallis test
-      if(g=="Col0"){ # Make it 1 if Col0 is compared to itself
+      if(g==controlgroup){ # Make it 1 if Col0 is compared to itself
         KW = 1
       } else {
-        dataKW = dplyr::filter(SummaryData, Genotype==g | Genotype=="Col0" & Leaf==l)[,c(v,which(names(SummaryData)=="Genotype"))]
+        dataKW = dplyr::filter(SummaryData, Genotype==g | Genotype==controlgroup & Leaf==l)[,c(v,which(names(SummaryData)=="Genotype"))]
       KW = kruskal.test( dataKW[,1] ~ Genotype, data = dataKW)
       KW = round(KW$p.value,3)
       }
@@ -838,20 +870,11 @@ for(g in  unique(StatsData$Genotype)){
         #labs(color = "Leaf") +
       ggtitle( paste(g,"-",l," n=",leafn," mean±SEM", sep = "") ) +
       My_Theme
-    print(mplot)
     Sys.sleep(2)
+    print(mplot)
     ggsave( paste("Mean-",g,"-",l,".pdf",sep = ""), mplot )
   }
 }
-
-
-
-  
-
-
-
-
-
 setwd(home)
 ```
 ///////////////////////////////////////////////////////////////////////////////
@@ -876,4 +899,30 @@ ggplot( na.omit(dplyr::filter(meanPlot,id!="Mean"&id!="pSEM"&id!="nSEM")) ,
 
 ```
 
+Under contstruction. Plot x - the time after treatment. y - SWP parameters
+```{r}
+filename = "Col0.CNQX1mM.csv" 
+data = read.csv( filename )
+SummaryData$treatmentTime = 0
+for (i in 1:nrow(SummaryData)){
+  daytime = data %>% filter(Date==SummaryData$Date[i] & id==SummaryData$id[i] ) %>%
+    select(DayTime)
+  daytime = daytime$DayTime[1]
+  SummaryData$treatmentTime[i] = daytime
+}
+write.csv(SummaryData, "Col0.CNQX1mMSummary2.csv", row.names = FALSE)
+
+SummaryData = read.csv("FullSummaryMin.csv")
+
+
+plot <- SummaryData %>% filter(Leaf=="L13") %>%
+  ggplot(aes(post.treatment,min.depol.rate, color=Genotype)) +
+  geom_point() +
+  xlab("time after treatment (min)")
+print(plot)
+  
+ggsave(filename = "depDur", plot)
+                
+
+```
 
