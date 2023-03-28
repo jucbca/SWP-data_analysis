@@ -2,7 +2,7 @@
 title: "SWPanalyzer"
 output: html_document
 date: "2023-02-17"
-editor_options: Code developed by Juan Camilo Barbosa-Caro
+editor_options: Code developed by Juan Camilo Barbosa-Caro. Team signaling @ Frommer Lab. Düsseldorf-Germany.
   chunk_output_type: console
 ---
 
@@ -17,13 +17,15 @@ This script helps you to manipulate and analyze raw data from electrophysiologic
   hyperpol.amplitude1 - Hyperpolarization amplitude from first baseline to peak hyperpol 
   depol.amplitude     - Depolarization amplitude from peak hyperpol to peak depol.
   repol.amplitude     - Repolarization amplitude from second baseline to peak repolarization.
+  max.hyperpol.rate   - Max peak of hyperpolarizing slope.
   min.depol.rate      - Minimum peak of slope in the depolarization phase.
   max.hyperpol.rate   - Maximum peak of slope in the first hyperpol phase.
   bl2                 - Final baseline after SWP is finished
   depDur              - Time between the following two time points: 
                         I) @ time of min.depol.rate
                         II) @ time of middle voltage between peak repolarization and peak depolarization
-                  
+  hyperpol.duration   - Duration of first hyperpolarization from time @ max.hyperpol.rate to time @ min.depol.rate.
+  
     
     INPUT:
  .txt files in a folder with the following structure.
@@ -46,10 +48,17 @@ Example "E1_L08.1PG_Col0"
 
     OUTPUT:   
     each step yields an output.
-">genotype<.csv" file with modified raw data for R manipulation.
-">genotype-date<" folder with a plot for every analyzed trace as 
-  ">plant#.leaf#<.pdf". 
-">genotype<Summary.csv" file With the amplitude, raising time, decay time. 
+A folder with a name of choice inputed in step 2.1
+In this folder 
+  - a >genotype<->date< folder with all the traces corresponding to that combination. Each image is saved as the plant#.L##
+  - >genotype<.csv file with the raw data organized as a data frame to use with R or any other coding language.
+  - >genotype<Summary.csv file summarizing for every leaf of every plant all the parameters calculated. Each parameter is a column.
+  - >date<-basicStats.csv file with the Shapiro-Wilk normality test, the Mann-Whitney U test and the Kruskal-Wallis test for each parameter of each leaf of each genotype. Both non-parametric tests are compared to Col0 or any other group stated in step 2.1.
+  - >date-parameter<.pdf files. One for each parameter - violin plot with all the point separated by genotype and leaf.
+  - Mean->genotype-L##<.pdf files. One for each leaf of each genotype. The graphical mean of all traces ± SEM. 
+
+
+
 
                                     BIASES
 Traces are filtered with a Savitzky-Golay method which reduces the amplitude (by around 5mV) of traces with a very sharp spike in the peak depolarization. If there is a phenotype at very sharp depol, we are probably missing it.
@@ -82,7 +91,9 @@ Technical guidelines.
 https://rmarkdown.rstudio.com/authoring_quick_tour.html
 ///////////////////////////////////////////////////////////////////////////////
 
-
+## things to do
+- change V to mV in the column name.
+- include the duration of hyperpol peak in Parameters.
    
                                     
 1. Function and library loading
@@ -90,6 +101,8 @@ https://rmarkdown.rstudio.com/authoring_quick_tour.html
 - Run this chunk once every time you start the program.
 If you don't have the packages installed in your computer do it by typing in the console:
 install.packages("name of package")
+
+
 ```{r}
 library(ggplot2)
 library(tidyr)
@@ -103,7 +116,8 @@ Parameters = c("hyperpol.amplitude1",
                "max.hyperpol.rate",
                "repol.amplitude", 
                "bl2",
-               "depDur")
+               "depDur",
+               "hyperpol.duration")
 
 # Function for parameter finding
 DataExtraction <- function(data, date){ 
@@ -194,7 +208,7 @@ findSWPvalues <- function(trace, plant){
     }
     
   } else {
-    stimFrames =  c(90,95)
+    stimFrames =  c(90,95) 
     # Pick the first NaN (or F1 in DayTime column) for plant 1, and the 3rd NaN for plant 2
     if( plant == 1){
       stimFrame = stimFrames[1] ### Determines the stimulus frame by finding the first NaN. Which is when the pedal is pressed.
@@ -228,14 +242,14 @@ findSWPvalues <- function(trace, plant){
   ### Find peak depolarization
   maxDepol = min(   na.omit( trace[ stimFrame:length(trace) ] )   ) # find peak depol. It's extracellular recording, so depol goes to negative
   
-  depolFrame = which(trace == maxDepol) # Find frame at maximum  
+  depolFrame = which(trace == maxDepol) # Find frame at maximum depol 
   
   
   
                         ### hyperpol.amplitude1
   ### Find peak of first hyperpolarization between stimulus and depol peak
-  maxHyperpol = max(  na.omit(trace[ (stimFrame-10) : which(trace==maxDepol) ])   )
-  hyperpolFrame =  which(trace == maxHyperpol)       
+  maxHyperpol = max(  na.omit(trace[ (stimFrame-10) : depolFrame ])   )
+  hyperpolFrame =  which(trace == maxHyperpol)# Find frame at maximum hyperpol
   hyperpol.amplitude1 = maxHyperpol-bl
   
   
@@ -247,14 +261,13 @@ findSWPvalues <- function(trace, plant){
   
   
                         ### minDepolrate frame
-  ### Find Half maximum to depolarization peak     
-  halfDepol =  maxDepol / 2 # Find halfmax Voltage. 
+
   # find the peak slope at depol part of the trace
-  # focus on the chunk between stim and max
-  depolTrace = trace[ (stimFrame+10) : depolFrame  ]  
+  # focus on the chunk between max hyperpol an max depol
+  depolTrace = trace[hyperpolFrame:depolFrame] #trace[ (stimFrame+10) : depolFrame  ]  
   depoltrace.firstderivative = calculateslope(depolTrace)
   min.depol.rate =  min(depoltrace.firstderivative)
-  HalfDepolframe = min( which(depoltrace.firstderivative == min.depol.rate) )+9
+  HalfDepolframe = min( which(depoltrace.firstderivative == min.depol.rate) )+hyperpolFrame-stimFrame
 # to find half max frame, substract the halfMax V from the trace and pick the closest to 0.
   # HalfDepolframe = min (
   #   which (  abs((depolTrace)-halfDepol ) == min( abs((depolTrace)-halfDepol))  )  ## Find the time at Halfdepol
@@ -263,11 +276,16 @@ findSWPvalues <- function(trace, plant){
   
   
                       ### max hyperpol rate
-  max.hyperpol.rate = max(depoltrace.firstderivative)
+  # focus on the chunk between max hyperpol an max depol
+  hyperpolTrace = trace[(hyperpolFrame-20) : hyperpolFrame] # checks the trace 20s before the peak hyperpol.
+  hyperpoltrace.firstderivative = calculateslope(hyperpolTrace)
+  max.hyperpol.rate = max(hyperpoltrace.firstderivative)
   ### Save time of max slope
-  max.slope.frame = min( which(depoltrace.firstderivative == max.hyperpol.rate) )+9
+  max.slope.frame = min( which(hyperpoltrace.firstderivative == max.hyperpol.rate) )+hyperpolFrame-20-stimFrame
   
+                      ### hyperpol.duration from max hyperpol slope to min depol slope
   
+  hyperpol.duration = HalfDepolframe - max.slope.frame
   
                           ### second baseline
   ### Find second baseline i.e. after repolarization
@@ -312,6 +330,7 @@ findSWPvalues <- function(trace, plant){
   repol.amplitude,
   bl2,
   depDur,
+  hyperpol.duration,
   stimFrame
   )
   return( list(trace, SWPvalues))
@@ -511,9 +530,9 @@ Create a folder with the name of your election. Here all the output will be save
 
                              EDIT THE FOLDER NAME HERE
 ```{r}
-foldername = "almt5-1-220926" # Replace the text in "" with the name you want your folder to have.
+foldername = "moelangeAnalysis"  # Replace the text in "" with the name you want your folder to have.
 # What is your control group?
-controlgroup =  "Col0" # "Col0.Mannitol1mM" #  
+controlgroup = "Col0" #  "Col0.Mannitol1mM" #  
 #####
 batchFolder = paste(home,foldername,sep="/")
 print("Continue with step 2.2") ###
@@ -702,6 +721,10 @@ for( i in grep("Summary", list.files()) ){
 }
 
 
+# omit all the recordings clasified as fail. Those have depDur = NA
+failedtrace = which(is.na(SummaryData$depDur))
+SummaryData = SummaryData[-failedtrace,]
+
 # find mean and SEM, shapiro test for each genotype
     # also
 # Non-parametric test comparing each mutant to Col0 for this batch. 
@@ -771,6 +794,8 @@ for( v in which( names(SummaryData)%in%Parameters ) ) {
   units = "Voltage (mV)"
   if(names(SummaryData)[v]=="depDur"){
     units = "Time (s)"
+  } else if ( names(SummaryData)[v]%in%c("min.depol.rate","max.hyperpol.rate") ){
+    units = "Slope(mV/s)"
   }
   plotName = paste(paste(unique(SummaryData$Date),collapse="."), "-",
                    names(SummaryData)[v], sep = "")
@@ -822,19 +847,30 @@ My_Theme =  theme(
   panel.grid.minor.y = element_line(),
   panel.grid.major.x = element_line(), #element_line()
   panel.grid.minor.x = element_blank()) 
+
+
 # loop betwee genotypes
 for(g in  unique(StatsData$Genotype)){
   genotypeData <-  read.csv(paste(g,".csv",sep = "")) %>% unite("id",id,plant,Date,sep = "_")
+
   # Organize T-V1-V2...Vn
   for (l in unique(genotypeData$Leaf)){
     Leafdata = genotypeData %>% dplyr::filter(Leaf==l)
     leafn = StatsData %>% filter(Genotype == g, Leaf == l) %>% summarize(mean(N)) %>% as.numeric
     meanPlot =data.frame("Seconds"=c(seq(-30,0),seq(1,270))) 
-    for (i in unique(Leafdata$id) ){
+    for (i in unique(Leafdata$id) ){ 
+      mid = strsplit(i,split = "_")[[1]][1] # get back the id for i
+      # ver si existe en el SummaryData, si no, skip to next id
+      if(nrow(SummaryData %>% dplyr::filter(Date==mdate,
+                                            id==mid,
+                                            Leaf==mleaf, 
+                                            Genotype==g)) == 0){
+        
+        next
+      }
       vCol = Leafdata %>% dplyr::filter(Leaf==l, id==i) %>% select(V) # pick a single V vector
       # get the frame at which max depol happens for that trace.
       mleaf = l
-      mid = strsplit(i,split = "_")[[1]][1]
       mplant = strsplit(i,split = "_")[[1]][2]
       mdate = strsplit(i,split = "_")[[1]][3]
       stimFrame = SummaryData %>% 
@@ -868,7 +904,7 @@ for(g in  unique(StatsData$Genotype)){
       xlab ("Time (s)") + 
       ylim (-100,40) +
         #labs(color = "Leaf") +
-      ggtitle( paste(g,"-",l," n=",leafn," mean±SEM", sep = "") ) +
+      ggtitle( paste(g,"-",l," n=",round(leafn)," mean±SEM", sep = "") ) +
       My_Theme
     Sys.sleep(2)
     print(mplot)
@@ -876,6 +912,7 @@ for(g in  unique(StatsData$Genotype)){
   }
 }
 setwd(home)
+print("Congrats! you are done. Start another batch or leave. You deserve it")
 ```
 ///////////////////////////////////////////////////////////////////////////////
 
