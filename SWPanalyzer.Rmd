@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
                         DESCRIPTION 
         
-This script helps you to manipulate and analyze raw data from electrophysiological recordings of plants made with the software LabScribe. It analyzes SWP traces and determines 6 different parameters on which statistics can be run. These parameters are:
+This script helps you to manipulate and analyze raw data from electrophysiological recordings of plants made with the software LabScribe. It analyzes SWP traces and determines different parameters on which statistics can be run. These parameters are:
 
   hyperpol.amplitude1 - Hyperpolarization amplitude from first baseline to peak hyperpol 
   depol.amplitude     - Depolarization amplitude from peak hyperpol to peak depol.
@@ -125,12 +125,14 @@ DataExtraction <- function(data, date){
   time1 = data$Time
   ToD = data$TimeOfDay
   #determine which have info
-  PlantNumber = 1
-  if ( length(grep("L08",names(data))) > 1 ){
-    PlantNumber = 2
+  if ( length( grep("L08",names(data)) ) == 1 ){
+    PlantNumber = names(data)[grep("L08",names(data)) ] %>% substr(8,8) %>% as.numeric()
+  } else if ( length( grep("L08",names(data)) ) > 1 ){
+    PlantNumber = c(1,2)
   }
   # Extract info one plant at a time.
-  for( n in 1:PlantNumber){
+  index=1
+  for( n in PlantNumber){
     leaf1 = paste("L08.", n, sep = "")
     leaf2 = paste("L13.",n, sep = "")
     plant1 = data[, grep(leaf1, names(data)): grep(leaf2, names(data))] # pick the columns w/ the data
@@ -158,7 +160,8 @@ DataExtraction <- function(data, date){
     
     plant1 = list(plant1)
     output <- append(output,plant1) 
-    names(output[n]) <-  paste("plant",n,sep = "")
+    names(output[index]) <-  paste("plant",n,sep = "")
+    index = index+1
   }
   
   return(output)
@@ -304,7 +307,10 @@ findSWPvalues <- function(trace, plant){
   
                         ### maxRepol/2 frame
   halfRepol = maxRepol + ((maxDepol-maxRepol)/2) # bl2 + (maxDepol - bl2)/2 # 
-  halfRepolframe = which( abs(repolTrace-halfRepol) == min (abs(repolTrace-halfRepol))  )   + depolFrame - stimFrame
+  halfRepolframe =  max( which( abs(repolTrace-halfRepol) <= min(abs(repolTrace-halfRepol))+1 ) )   + depolFrame - stimFrame
+    
+    
+    #which( abs(repolTrace-halfRepol) == min (abs(repolTrace-halfRepol))  )    + depolFrame - stimFrame # done max instead of min because of the oscillations that could happen while the voltage stabilizes.
   
 
   
@@ -529,7 +535,7 @@ Create a folder with the name of your election. Here all the output will be save
 
                              EDIT THE FOLDER NAME HERE
 ```{r}
-foldername = "moelangeAnalysis"  # Replace the text in "" with the name you want your folder to have.
+foldername = "gk.sk-230417-21"  # Replace the text in "" with the name you want your folder to have.
 # What is your control group?
 controlgroup = "Col0" #  "Col0.Mannitol1mM" #  
 #####
@@ -848,7 +854,7 @@ My_Theme =  theme(
   panel.grid.minor.x = element_blank()) 
 
 
-# loop betwee genotypes
+# loop between genotypes
 for(g in  unique(StatsData$Genotype)){
   genotypeData <-  read.csv(paste(g,".csv",sep = "")) %>% unite("id",id,plant,Date,sep = "_")
 
