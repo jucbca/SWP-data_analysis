@@ -9,9 +9,11 @@ editor_options: Code developed by Juan Camilo Barbosa-Caro. Team signaling @ Fro
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-                        DESCRIPTION 
+
+                                    DESCRIPTION 
         
 This script helps you to manipulate and analyze raw data from electrophysiological recordings of plants made with the software LabScribe. It analyzes SWP traces and determines different parameters on which statistics can be run. These parameters are:
+
 
   hyperpol.amplitude1 - Hyperpolarization amplitude from first baseline to peak hyperpol 
   depol.amplitude     - Depolarization amplitude from peak hyperpol to peak depol.
@@ -117,22 +119,21 @@ Parameters = c("hyperpol.amplitude1",
                "bl2",
                "depDur",
                "hyperpol.duration")
-
 # Function for parameter finding
 DataExtraction <- function(data, date){ 
-  
   output <- list()
   time1 = data$Time
   ToD = data$TimeOfDay
   #determine which have info
+
   if ( length( grep("L08",names(data)) ) == 1 ){
     PlantNumber = names(data)[grep("L08",names(data)) ] %>% substr(8,8) %>% as.numeric()
   } else if ( length( grep("L08",names(data)) ) > 1 ){
     PlantNumber = c(1,2)
   }
   # Extract info one plant at a time.
-  index=1
-  for( n in PlantNumber){
+    for( n in 1:PlantNumber){
+
     leaf1 = paste("L08.", n, sep = "")
     leaf2 = paste("L13.",n, sep = "")
     plant1 = data[, grep(leaf1, names(data)): grep(leaf2, names(data))] # pick the columns w/ the data
@@ -162,8 +163,8 @@ DataExtraction <- function(data, date){
     output <- append(output,plant1) 
     names(output[index]) <-  paste("plant",n,sep = "")
     index = index+1
+
   }
-  
   return(output)
 }###  LabScribe into data frame. PlantNumber= 1 or 2 per trace (Should make it 4, for each electrode)
 AmIDone <- function(file){
@@ -309,10 +310,6 @@ findSWPvalues <- function(trace, plant){
   halfRepol = maxRepol + ((maxDepol-maxRepol)/2) # bl2 + (maxDepol - bl2)/2 # 
   halfRepolframe =  max( which( abs(repolTrace-halfRepol) <= min(abs(repolTrace-halfRepol))+1 ) )   + depolFrame - stimFrame
     
-    
-    #which( abs(repolTrace-halfRepol) == min (abs(repolTrace-halfRepol))  )    + depolFrame - stimFrame # done max instead of min because of the oscillations that could happen while the voltage stabilizes.
-  
-
   
                             ### Depolarization duration
   #Time from halfmax raise and decay        
@@ -535,6 +532,7 @@ Create a folder with the name of your election. Here all the output will be save
 
                              EDIT THE FOLDER NAME HERE
 ```{r}
+
 foldername = "gk.sk-230417-21"  # Replace the text in "" with the name you want your folder to have.
 # What is your control group?
 controlgroup = "Col0" #  "Col0.Mannitol1mM" #  
@@ -855,6 +853,7 @@ My_Theme =  theme(
 
 
 # loop between genotypes
+
 for(g in  unique(StatsData$Genotype)){
   genotypeData <-  read.csv(paste(g,".csv",sep = "")) %>% unite("id",id,plant,Date,sep = "_")
 
