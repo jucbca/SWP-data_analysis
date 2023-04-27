@@ -131,8 +131,9 @@ DataExtraction <- function(data, date){
   } else if ( length( grep("L08",names(data)) ) > 1 ){
     PlantNumber = c(1,2)
   }
+  index = 1
   # Extract info one plant at a time.
-    for( n in 1:PlantNumber){
+    for( n in PlantNumber){
 
     leaf1 = paste("L08.", n, sep = "")
     leaf2 = paste("L13.",n, sep = "")
@@ -821,7 +822,7 @@ for( v in which( names(SummaryData)%in%Parameters ) ) {
   print(traceParamPlot)
   
   ggsave(paste(plotName,".pdf",sep=""),traceParamPlot )
-  Sys.sleep(2)
+  Sys.sleep(0.2)
 }
 
 

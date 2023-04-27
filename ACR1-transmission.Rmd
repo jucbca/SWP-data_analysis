@@ -237,8 +237,8 @@ if(file.exists(batchname)==FALSE){
 
 
 3. Modify the traces in the home folder. Then the plot is divided by the stimuli. There should be only 8 stimulus points from step 1 and the order of the stimuli during the experiment must be p1-1s, p1-10s, p6-1s, p6-10s.
-Output -> trace, p1s1.trace, p1s1.trace... for all the files in the folder. 
-Saved as >p#s#.csv<
+input   - yyy_Export.txt files in the home folder
+Output  - trace, p1s1.trace, p1s1.trace... for all the files in the folder. Saved as >p#s#.csv<
 ```{r}
 setwd(home)
 list.files()
@@ -332,6 +332,13 @@ for( f in list.files()[grep(".txt",list.files())] ){ #
 
 
 4. Analyze - calculate raising slope, peak depol, steady state depol, and tau.
+input   -  >p#s#.csv< traces in the batch folder
+output  - datasummary saved as "parameters_summary.csv" for each stimulus the calculated parameters 
+  peak.depol - max depolarization
+  peak.depol.slope - raising time of depolarization upon simulus
+  peakdepolslope.time - time at which depol slope is max
+  ss.depol - depolarization in the last second.
+  tau - time at which voltage is 37% of the ss.depol after the stimulus ends.
 ```{r}
 setwd(batchfolder)
 # make for loop for all the files
@@ -401,12 +408,55 @@ plot(onepulse$Time,onepulse$mV)
 ```
 
 
-5. Run statistics!
+5. Run statistics! Decide which ones you want to run
 
 5.1 Compare Tau between genotypes
+input   -   datasummary saved as "parameters_summary.csv"
+output  - "datastats.csv" with mean, SEM, shapiro, and whitney-mann tests for tau data. All that plotted and saved as  "tau_OnRecordingElectrode.pdf"
 ```{r}
+setwd(batchfolder)
 # pick values where stimulus is applied on the recording electrode
 onelectrode.data = datasummary %>% slice(which(datasummary$stim.position %>% substr(2,2) %>% as.integer() == datasummary$electrode))
+
+# run statistics on the tau, 
+datastats = NULL
+for(g in unique(datasummary$Genotype) ){
+  for(d in (datasummary%>%
+            dplyr::filter(Genotype==g)%>%select(stim.duration)%>%unique() )[[1]]  ){
+    for(p in (datasummary%>%
+              dplyr::filter(Genotype==g&stim.duration==d)%>%select(stim.power)%>%unique() )[[1]]  ){
+      #print(paste(g,d,p))
+      control.tau.data = datasummary %>% 
+        dplyr::filter(Genotype == "Col0" & 
+                                stim.duration==d & 
+                                stim.power==p) %>%
+        select(tau)
+      tau.data = datasummary %>% 
+        dplyr::filter(Genotype == g & 
+                                stim.duration==d & 
+                                stim.power==p) %>%
+        select(tau)
+      
+      tau.mean = tau.data %>% summarise(mean(tau))%>%round(2)
+      n = tau.data %>% nrow()
+      tau.SEM = ((tau.data %>% summarise(sd(tau)) ) / n)%>%round(2)
+      tau.shapiro = shapiro.test(tau.data$tau)$p.value%>%round(2)
+      tau.WM = wilcox.test(control.tau.data$tau,tau.data$tau)$p.value%>%round(2)
+
+      datastats = rbind(datastats,
+                        data.frame("Genotype"=g,
+                                   "stim.duration"=d,
+                                   "stim.power"=p,
+                                   "mean"=tau.mean,
+                                   "SEM"=tau.SEM,
+                                   "N"=n, 
+                                   "ShapiroTest"=tau.shapiro, 
+                                   "Whitney-Mann"=tau.WM))
+    }
+  }
+}
+write.csv(datastats, "datastats.csv", row.names = FALSE)
+
 
 # Violin plot for each parameter calculated
 My_Theme =  theme(
@@ -422,16 +472,59 @@ My_Theme =  theme(
   panel.grid.major.x = element_blank(), #element_line()
   panel.grid.minor.x = element_blank()) 
 
-ggplot(datasummary, aes(`stim.duration`, `tau`, color = `Genotype`, lty = `stim.power` )) +
+ggplot(datasummary, aes(`Genotype`, `tau`, color = `stim.duration`, lty = `stim.power` )) +
   geom_violin(size = 1) +
   #geom_dotplot(binaxis='y', stackdir='center', position=position_dodge(0.9),dotsize=0.5,aes(fill=`Genotype`)) +
   geom_jitter(shape=1, position=position_dodge(0.9), size = 3) +
+  geom_label(data = datastats ,
+             aes(label = `Whitney.Mann`, y = Inf), inherit.aes = TRUE, 
+            position=position_dodge(1), vjust = 1.5 ) +
   ylab ("Tau (s)") + 
   ggtitle("Tau for stimuli on recording electrode") +
   My_Theme
-ggsave("tau_OnRecordingE.pdf")
+ggsave("tau_OnRecordingElectrode.pdf")
 ```
 
 5.2 Compare amplitude between electrodes
-ACA VOY
+input   - 
+output  - 
+```{r}
+setwd(batchfolder)
+# create columns that determines which recording is of local stimulus and whichdistal
+datasummary = read.csv("parameters_summary.csv")
+datasummary$local.stim = NaN
+
+datasummary = rbind( 
+  datasummary %>% slice(which(datasummary$stim.position %>% substr(2,2) %>% as.integer() == datasummary$electrode)) %>% mutate(local.stim="0mm"),
+  datasummary %>% slice(which(datasummary$stim.position %>% substr(2,2) %>% as.integer() != datasummary$electrode)) %>% mutate(local.stim="6mm") 
+)
+
+# work only with Col0 data for now
+g = "SLAH3"
+datasummary.g = datasummary%>%dplyr::filter(Genotype==g)
+parameters = c("peak.depol", "peak.depol.slope", "ss.depol")
+for( v in which( names(datasummary.g)%in%parameters ) ) {
+  print(names(datasummary.col0)[v])
+  units = "Voltage (mV)"
+  if(names(datasummary.g)[v]=="peak.depol.slope"){
+    units = "Slope (mV/s)"
+  }
+  plotName = paste(g," - ", names(datasummary.g)[v], sep = "")
+  traceParamPlot <- 
+    ggplot(datasummary.g, aes(`local.stim`, datasummary.g[,v], color = `stim.duration`, lty = `stim.power` )) +
+      geom_violin(size = 1) + 
+      #geom_dotplot(binaxis='y', stackdir='center', position=position_dodge(0.9),dotsize=0.5,aes(fill=`Genotype`)) +
+      geom_jitter(shape=1, position=position_dodge(0.9), size = 3) +
+      # geom_label(data = datastats ,
+      #            aes(label = `Whitney.Mann`, y = Inf), inherit.aes = TRUE, 
+      #           position=position_dodge(1), vjust = 1.5 ) +
+      ylab (units) + 
+      ggtitle(plotName) +
+      My_Theme
+  print(traceParamPlot)
+  ggsave(paste(plotName,".pdf",sep=""),traceParamPlot )
+  Sys.sleep(0.2)
+}
+```
+
 
