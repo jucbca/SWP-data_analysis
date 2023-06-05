@@ -421,7 +421,7 @@ plotAndAnalyze <- function(genotypeFile){
   ### PLOT!        
           plotTitle = paste(IDi,leafi, sep = ".")
           
-            plot(x = trace$Seconds, y = trace$V, type = "l", main = plotTitle ) +
+            plot(x = trace$Seconds, y = trace$V, type = "l", main = plotTitle, ylim=c(-100,40) ) +
             abline(h = SWPvalues$bl, col="black", lty = 2) +
             abline(v = SWPvalues$HalfDepolframe, col="red") +
             abline(v = SWPvalues$max.slope.frame, col="red") +
@@ -472,7 +472,7 @@ plotAndAnalyze <- function(genotypeFile){
               
               # save plot
               pdf(file = paste( savename,"-",datei,"/", plotTitle, ".pdf" , sep = "") )
-              plot(x = trace$Seconds, y = trace$V, type = "l", main = plotTitle) +
+              plot(x = trace$Seconds, y = trace$V, type = "l", main = plotTitle, ylim=c(-100,40)) +
                 abline(h = SWPvalues$bl, col="black", lty = 2) +
                 abline(v = SWPvalues$HalfDepolframe, col="red") +
                 abline(v = SWPvalues$max.slope.frame, col="red") +
@@ -534,7 +534,7 @@ Create a folder with the name of your election. Here all the output will be save
                              EDIT THE FOLDER NAME HERE
 ```{r}
 
-foldername = "gk.sk-230417-21"  # Replace the text in "" with the name you want your folder to have.
+foldername = "tst"  # Replace the text in "" with the name you want your folder to have.
 # What is your control group?
 controlgroup = "Col0" #  "Col0.Mannitol1mM" #  
 #####
@@ -836,6 +836,8 @@ print(" Continue with step 4.2")
 
 4.2.
 Plot the mean of all aligned traces. Saves the plots as PDFs in the batch folder
+input - StatsData from step 4.1, >genotype<.csv files for genotypes in StatsData, SummaryData compiled from summary files in step 4.1.
+output - average trace with SEM overlaid.
 ```{r}
 setwd(batchFolder)
 # Violin plot for each parameter calculated
@@ -866,6 +868,9 @@ for(g in  unique(StatsData$Genotype)){
     for (i in unique(Leafdata$id) ){ 
       mid = strsplit(i,split = "_")[[1]][1] # get back the id for i
       # ver si existe en el SummaryData, si no, skip to next id
+      mleaf = l
+      mplant = strsplit(i,split = "_")[[1]][2]
+      mdate = strsplit(i,split = "_")[[1]][3]
       if(nrow(SummaryData %>% dplyr::filter(Date==mdate,
                                             id==mid,
                                             Leaf==mleaf, 
@@ -875,9 +880,7 @@ for(g in  unique(StatsData$Genotype)){
       }
       vCol = Leafdata %>% dplyr::filter(Leaf==l, id==i) %>% select(V) # pick a single V vector
       # get the frame at which max depol happens for that trace.
-      mleaf = l
-      mplant = strsplit(i,split = "_")[[1]][2]
-      mdate = strsplit(i,split = "_")[[1]][3]
+     
       stimFrame = SummaryData %>% 
         dplyr::filter(Date==mdate,id==mid,Leaf==mleaf, Genotype==g)%>%
         summarise(stimFrame+HalfDepolframe) %>% as.numeric()
