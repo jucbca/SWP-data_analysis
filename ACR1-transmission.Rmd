@@ -12,8 +12,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ### INPUT ".txt" file. the columns of the electrodes should have the number of the electrode.
 ### OUTPUT ".csv" file. with 8 columns: Seconds, leaf,V,genotype,Stim,Date,DayTime,id.
-??
-
+(3) A folder with the traces separated by power and duration in "pxsy.csv" files.
+(4) "parameters_summary.csv" with the parameters and a plot for each stimulus 
+(5)
 
 
 1.Load all the libraries and functions. Run once
@@ -22,6 +23,7 @@ library (ggplot2)
 library (tidyr)
 library(dplyr)
 library(signal)
+library(scales)
 # Functions
 PlotTrace <- function(trace,from=0,to=max(na.omit(trace$Time)), extraInfo = "" ){
   ## Theme...
@@ -64,15 +66,15 @@ NormalizeBaseline <- function(trace, normTime = 0 ){
   trace = gather(trace, "electrode", "mV", 3:ncol(trace)) # change structure for ggplot management
   return(trace)
 } ## INPUT trace spreaded i.e. each electrode as column. Won't work if data is not at 10Hz samplerate. Output: normalized, gathered trace for plotting.
-CalculateParameters <- function(trace){
+CalculateParameters <- function(trace, stimdelay = 0){
 # in the chunk during stimulation on.
-  stimon = which(trace$TimeOfDay=="F1")[1]
-  stimoff= which(trace$TimeOfDay=="F1")[2]
+  stimon = which(trace$TimeOfDay=="F1")[1] + stimdelay
+  stimoff= which(trace$TimeOfDay=="F1")[2] + stimdelay 
   stimchunk = na.omit(trace[stimon:stimoff,])
-  #plot(stimchunk$Time, stimchunk$mV) 
+  #plot(stimchunk$Time, stimchunk$mV, type="l") 
           # determine maximum -peak.depol-
   peak.depol =  min( stimchunk$mV )
-  peakdepol.frame =  which(trace$mV==peak.depol)-1
+  peakdepol.frame =  max(which(trace$mV==peak.depol)-1)
   peakdepol.time =  trace$Time[peakdepol.frame]
           # determine mean V at last 500 ms of the stimulus -ss.depol-
   ss.depol = mean( stimchunk$mV[(nrow(stimchunk)-50):nrow(stimchunk)] )
@@ -81,20 +83,22 @@ CalculateParameters <- function(trace){
   
   # in the chunk between onset of stimulus and peak.depol
   raisechunk = na.omit( trace[stimon:peakdepol.frame,] )
+  #plot(raisechunk$Time, raisechunk$mV, type="l") 
             # determine max.depol.slope
   raisechunk.slope = calculateslope(raisechunk$mV)
   peak.depol.slope = min(na.omit(raisechunk.slope) )
   peakdepolslope.frame = which(raisechunk.slope == peak.depol.slope ) + stimon
   peakdepolslope.time = trace$Time[peakdepolslope.frame]
-  #plot(raisechunk.slope)
+   # plot(raisechunk$Time, raisechunk$mV, type="l") 
+   # plot(raisechunk.slope, type="l")
   
   
   # in the chunk after end of stimulus.
   decaychunk = na.omit(  trace[stimoff:nrow(trace),] )
-  #plot(decaychunk$Time,decaychunk$mV)
+  #plot(decaychunk$Time,decaychunk$mV, type="l")
           # determine time at 37% of ss.depol -tau-
   tau.voltage = round(ss.depol*0.37,2)
-  tau.index = which( abs(decaychunk$mV- tau.voltage) == min( abs(decaychunk$mV- tau.voltage) ) ) + stimoff
+  tau.index = min(which( abs(decaychunk$mV- tau.voltage) == min( abs(decaychunk$mV- tau.voltage) ) ) + stimoff)
   tau.abstime = trace$Time[tau.index]
   tau = tau.abstime-trace$Time[stimoff+1]
 
@@ -116,6 +120,7 @@ CheckSampleRate <- function(trace){
     print("Good! The sample rate is: ")
     print(paste(sampleRate, "Hz"))
   }
+  return(sampleRate)
 }
 filterTrace <- function(trace){
   # Change NA for the value on the previous row
@@ -128,7 +133,7 @@ filterTrace <- function(trace){
     sgolayfilt( trace$mV , p = 1, n = 9) 
   return(trace)
 }
-segment.trace <- function(trace){
+segment.trace.power1.6 <- function(trace){
     ## for later: put in a for loop.
   output = list()
           # Power 1
@@ -207,6 +212,82 @@ calculateslope <- function(vector) {
   slopetrace = append(slopetrace, slopetrace[length(slopetrace)])
   return(slopetrace)
 } # input a 1xN vector | output a 1xN vector with values for the slope
+transmission.experiment <- function(){
+  # esto va antes del loop
+  p1s1.trace = NULL
+  p1s10.trace= NULL
+  p6s1.trace = NULL
+  p6s10.trace= NULL
+  # Esto va depues de filtrar y plotear el registro completo
+          ## Save stimulus trace
+  answer <- readline (prompt="Are the stim times ok? type values divided by [,] to change, [y] to continue and save or [n] to skip trace.  ")
+  while ( nchar(answer)<=15 & answer!="y" ){
+    print("No valid input, try again ")
+    answer <- readline (prompt="Are the stim times ok? type values divided by [,] to change, [y] to continue and save or [n] to skip trace.  ")
+  }
+  if( nchar(answer)>15 ){
+      answer = strsplit(answer,",")[[1]]
+      stimTimes = as.numeric(answer)
+      print("Stim times updated to ")
+      print(stimTimes)
+  } else if(answer == "n"){
+    next
+  }
+      ## Segment into the different stimuli
+  segments = segment.trace.power1.6(trace)
+  p1s1.trace = rbind(p1s1.trace,segments$p1_1s)
+  p1s10.trace= rbind(p1s10.trace,segments$p1_10s)
+  p6s1.trace = rbind(p6s1.trace,segments$p6_1s)
+  p6s10.trace= rbind(p6s10.trace,segments$p6_10s)
+      ##
+      ## SAVE
+  setwd(batchfolder)
+  write.csv(p1s1.trace, "p1s1.csv", row.names = FALSE)
+  write.csv(p1s10.trace, "p1s10.csv", row.names = FALSE)
+  write.csv(p6s1.trace, "p6s1.csv", row.names = FALSE)
+  write.csv(p6s10.trace, "p6s10.csv", row.names = FALSE)
+}
+segment.stimuli <- function(tracein, stimdelay = 0){
+  stimuli = stim.indexes
+  output = list()
+
+  for (s in seq(1,length(stimuli),2) ){ # take every second mark, so the first of every stimulus
+    # first stimulus. start to first s
+    delay = (stimdelay/sample.rate)*1000
+    # duration of the stimulus
+    stim.duration = round( ( tracein$Time[ stimuli[s+1] ] - tracein$Time[ stimuli[s] ] )*1000 )
+    
+    # select each electrode
+    bothelectrodes = NULL
+    for ( e in unique(tracein$electrode) ){
+      trace.e = dplyr::filter(tracein, electrode==e)
+        if ( s == 1 ){
+        trace.singlestim = trace.e[ (stimuli[1]-(2*sample.rate)) : stimuli[3], ]
+      } else if ( s == length(stimuli)-1 ) { # last stimulus. last s to end
+        trace.singlestim = trace.e[ (stimuli[s]-(2*sample.rate)) : nrow(trace), ]
+      } else { # all the rest
+        trace.singlestim = trace.e[ (stimuli[s]-(2*sample.rate)) : (stimuli[s+1]+(5*sample.rate)),]
+      }
+      plot(trace.singlestim$Time, trace.singlestim$mV, type="l", ylim=rev(c(0,-100)) ) +
+      abline(v = tracein$Time[ c(stimuli[s],stimuli[s+1])+stimdelay ], col="red") +
+      title(main = paste(stim.duration, "ms",sep = ""))
+      Sys.sleep(1)
+      # put into list
+      bothelectrodes = append(bothelectrodes, list( electrode = trace.singlestim))
+      names(bothelectrodes)[length(bothelectrodes)] = e
+    }
+    
+    
+    
+    
+    
+    
+
+    output[[length(output) + 1]] = append( bothelectrodes, list( delay = delay ) )
+    names(output)[[length(output)]] = paste(stim.duration,"ms") 
+  }
+  return(output)
+} # input complete dataframe
 doFilter = 0
 home = getwd()
 summaryparameters = c("Genotype",
@@ -226,7 +307,7 @@ summaryparameters = c("Genotype",
 
 2. Create a batch folder
 ```{r}
-batchname = "230228-analysis"
+batchname = "230505-analysis"
 batchfolder = paste(home,batchname,sep="/")
 setwd(home)
 if(file.exists(batchname)==FALSE){
@@ -242,10 +323,7 @@ Output  - trace, p1s1.trace, p1s1.trace... for all the files in the folder. Save
 ```{r}
 setwd(home)
 list.files()
-p1s1.trace = NULL
-p1s10.trace= NULL
-p6s1.trace = NULL
-p6s10.trace= NULL
+
 recording.id = 1
 # meter en un for loop con todos los datos.
 for( f in list.files()[grep(".txt",list.files())] ){ # 
@@ -254,7 +332,7 @@ for( f in list.files()[grep(".txt",list.files())] ){ #
   savename = strsplit(savename,split = "_")[[1]][1]
   trace = read.delim(  filename  ) # import .txt file in the home folder
   #trace = read.csv("array1_Export.csv"  )
-  CheckSampleRate(trace)
+  sample.rate = round( CheckSampleRate(trace) )
   
   # Save info from E1 column name
   metaData = names(trace)[grep("E1", names(trace))]
@@ -269,7 +347,9 @@ for( f in list.files()[grep(".txt",list.files())] ){ #
   pickElectrodes = c(1,2)
   trace = trace[,c(1,2,which(names(trace)%in%pickElectrodes))]
   
-  stimTimes = trace$Time[ which(  is.na(trace$Time)  ) -1]
+  stim.indexes =  which(  is.na(trace$Time)  ) -1
+  stimTimes = trace$Time[stim.indexes]
+
 
   # normalize and gather
   trace = NormalizeBaseline(trace, normTime = 1)
@@ -295,39 +375,26 @@ for( f in list.files()[grep(".txt",list.files())] ){ #
   }
   print(paste(length(stimTimes)," stimuli at (s)",sep = ""))
   print(stimTimes)
-        ## Save stimulus trace
-  answer <- readline (prompt="Are the stim times ok? type values divided by [,] to change, [y] to continue and save or [n] to skip trace.  ")
-  while ( nchar(answer)<=15 & answer!="y" ){
-    print("No valid input, try again ")
-    answer <- readline (prompt="Are the stim times ok? type values divided by [,] to change, [y] to continue and save or [n] to skip trace.  ")
-  }
-  if( nchar(answer)>15 ){
-      answer = strsplit(answer,",")[[1]]
-      stimTimes = as.numeric(answer)
-      print("Stim times updated to ")
-      print(stimTimes)
-  } else if(answer == "n"){
-    next
-  }
-      ## Segment into the different stimuli
-  segments = segment.trace(trace)
-  p1s1.trace = rbind(p1s1.trace,segments$p1_1s)
-  p1s10.trace= rbind(p1s10.trace,segments$p1_10s)
-  p6s1.trace = rbind(p6s1.trace,segments$p6_1s)
-  p6s10.trace= rbind(p6s10.trace,segments$p6_10s)
-      ##
-      ## SAVE
-  setwd(batchfolder)
-  write.csv(p1s1.trace, "p1s1.csv", row.names = FALSE)
-  write.csv(p1s10.trace, "p1s10.csv", row.names = FALSE)
-  write.csv(p6s1.trace, "p6s1.csv", row.names = FALSE)
-  write.csv(p6s10.trace, "p6s10.csv", row.names = FALSE)
-  setwd(home)
+  
+  trace.segmented = segment.stimuli(trace, stimdelay = 200)
+  #### ACA!  segment both electrodes an put in same list!
+  
+  
+  
+  
+  
+  
+  save(trace.segmented, file = paste(batchfolder,"/",savename, ".RData",sep = ""))
+  # transmission.experiment() # runs that analysis
+  
+  
       ##
   recording.id = recording.id+1
-  
+  setwd(home)
 }
 ```
+
+
 
 
 
@@ -405,6 +472,68 @@ plot(onepulse$Time,onepulse$mV)
   }
   files = files[-(which(files==f))]
 }
+```
+4'. Dose-Response (time vs amplitude) Calculate parameters
+input   -  >###ms.RData< traces divided by duration and electrode.
+output  - datasummary.csv file with all the parameters for each stimulus
+```{r}
+setwd(batchfolder)
+datasummary = NULL
+for( f in grep("RData",list.files()) ){ # go through the lists of the different experiment
+  print(list.files()[f])
+  load(list.files()[f])
+  for(i in 1:length(trace.segmented) ) { # loop through the stim times
+    print(names(trace.segmented)[i])
+    print( as.numeric( strsplit(names(trace.segmented)[i],split = " ")[[1]][1] ) )
+    for(j in 1:(length(trace.segmented[[i]])-1) ){
+      print( names(trace.segmented[[i]][j]) )
+      plot(trace.segmented[[i]][[j]]$Time, trace.segmented[[i]][[j]]$mV)
+      one.stimulus = cbind( "stim.duration-ms-" =  as.numeric( strsplit(names(trace.segmented)[i],split = " ")[[1]][1] )  ,
+                          "electrode" = names(trace.segmented[[i]])[j],
+                          data.frame( CalculateParameters( trace.segmented[[i]][[j]] ) )
+      )
+    datasummary = rbind(datasummary, one.stimulus)
+    }
+  }
+}
+
+write.csv(datasummary, "datasummary.csv", row.names = FALSE)
+setwd(home)
+```
+
+5'. Plot the dose response curve from the datasummary.csv file from 4'
+input   - datasummary.csv file with all the parameters for each stimulus
+output  -
+```{r}
+# Violin plot for each parameter calculated
+My_Theme =  theme(
+  axis.text.x = element_text(color = "black", size = 20, angle = 0, hjust = 0.5, vjust = 0, face = "plain"),
+  axis.text.y = element_text(color = "black", size = 20, angle = 0, hjust = 0 , vjust = 0.5, face = "plain"),
+  axis.title.x = element_text(color = "black", size = 25, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), #element_blank(), #
+  axis.title.y = element_text(color = "black", size = 25, angle = 90, hjust = 0.5, vjust = 1, face = "plain"),
+  plot.title = element_text(color = "black", size = 25, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), # element_blank(), 
+  legend.text = element_text(size = 20),
+  legend.title = element_text(hjust = 0.1, size = 20),
+  panel.grid.major.y = element_blank(),
+  panel.grid.minor.y = element_blank(),
+  panel.grid.major.x = element_line(), #element_blank(), #element_line()
+  panel.grid.minor.x = element_line()) 
+
+
+
+ggplot(dplyr::filter(datasummary, electrode==2), aes(`stim.duration-ms-`, `peak.depol`, color = `electrode` )) +
+  geom_point(size = 3) +
+  scale_x_continuous(trans='log10',
+                     breaks=c(1,10,100,1000,10000) #trans_breaks('log10', function(x) 10^x),
+                     ) +
+  #xlim(c(1,5)) +
+  xlab ("Stimulus duration ms - log10 scale") + 
+  ylab ("Depolarization amplitude mV") + 
+  ggtitle("Dose-response to stimulus duration. Power-1") +
+  My_Theme
+
+ggsave(paste(batchfolder,"DoseResponse-time.pdf",sep = "/"))
+setwd(home)
 ```
 
 
@@ -527,4 +656,41 @@ for( v in which( names(datasummary.g)%in%parameters ) ) {
 }
 ```
 
+5.3 Compare raising time between electrodes RUN MANUALLY!
+```{r}
+library(plyr)
+list.files()
+data = read.csv("datasummary.csv"  )
+data$stim.duration.ms.
+data$stim.duration.ms. = as.character(round_any(data$stim.duration.ms, 100))
+
+ggplot(data, aes(`stim.duration.ms.`, `peakdepolslope.time`, color=`electrode`))+
+  #geom_violin(size = 1) + 
+      geom_dotplot(binaxis='y', stackdir='center', position=position_dodge(0.9),dotsize=0.5,aes(fill=`electrode`))+
+      #geom_jitter(shape=1, position=position_dodge(0.9), size = 3) +
+      # geom_label(data = datastats ,
+      #            aes(label = `Whitney.Mann`, y = Inf), inherit.aes = TRUE, 
+      #           position=position_dodge(1), vjust = 1.5 ) +
+      ylab ("Depol rate peak (ms)") + 
+      xlab ("Depol rate peak (ms)") + 
+      ggtitle("Time to raise vs Stim duration") +
+      My_Theme
+ggsave("depolarizationRate.pdf")
+
+
+
+# Violin plot for each parameter calculated
+My_Theme =  theme(
+  axis.text.x = element_text(color = "black", size = 20, angle = 0, hjust = 0.5, vjust = 0, face = "plain"),
+  axis.text.y = element_text(color = "black", size = 20, angle = 0, hjust = 0 , vjust = 0.5, face = "plain"),
+  axis.title.x = element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), # element_blank(), #
+  axis.title.y = element_text(color = "black", size = 25, angle = 90, hjust = 0.5, vjust = 1, face = "plain"),
+  plot.title = element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), # element_blank(), 
+  legend.text = element_text(size = 20),
+  legend.title = element_text(hjust = 0.1, size = 20),
+  panel.grid.major.y = element_blank(),
+  panel.grid.minor.y = element_blank(),
+  panel.grid.major.x = element_blank(), #element_line()
+  panel.grid.minor.x = element_blank()) 
+```
 
