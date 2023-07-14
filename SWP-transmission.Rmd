@@ -1,0 +1,885 @@
+---
+title: "SWP-transmission"
+output: html_document
+date: "2023-06-29"
+editor_options: 
+  chunk_output_type: console
+---
+
+
+### INPUT ".txt" file. the columns of the electrodes should have the number of the electrode. 
+    E1_genotype_S#_L## where S is the electrode where the stimulus is done and L the leaf. Both are optional
+### OUTPUT ".csv" file. with 8 columns: Seconds, leaf,V,genotype,Stim,Date,DayTime,id.
+(3) A folder with the traces separated by power and duration in "pxsy.csv" files.
+(4) "parameters_summary.csv" with the parameters and a plot for each stimulus 
+(5)
+
+
+1.Load all the libraries and functions. Run once
+```{r}
+library (ggplot2)
+library (tidyr)
+library(dplyr)
+library(signal)
+library(scales)
+library(plotrix)
+# Functions
+PlotTrace <- function(trace,from=0,to=max(na.omit(trace$Time)), extraInfo = "" ){
+  ## Theme...
+  My_Theme =  theme(
+    axis.text.x = element_text(color = "black", size = 20, angle = 0, hjust = 0.5, vjust = 0, face = "plain"),
+    axis.text.y = element_text(color = "black", size = 20, angle = 0, hjust = 0 , vjust = 0.5, face = "plain"),
+    axis.title.x = element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), #element_blank()
+    axis.title.y = element_text(color = "black", size = 30, angle = 0, hjust = 0, vjust = 0.5, face = "plain"),
+    plot.title = element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "bold"), # element_blank(),#
+    legend.text = element_text(size = 20),
+    legend.title = element_text(hjust = 0.1, size = 20),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_blank(), #element_line()
+    panel.grid.minor.x = element_blank()) 
+  ##
+  
+  tracePlot <- trace %>% dplyr::filter(`Time` > from & `Time` < to ) %>% 
+    ggplot(aes(`Time`, `mV`, color = `electrode`)) +
+    geom_point(size = 0.5) +
+    guides(color = guide_legend(override.aes = list(size = 3) )) +
+    geom_vline(xintercept = stimTimes[ which(stimTimes>from & stimTimes<to) ], linewidth = 0.1 ) + #Make vertical lines the data point immediately after the stimulus pedal was hit. And that are inside the plotting time range.
+    ylab ("mV") + 
+    xlab ("Time (s)") + 
+    labs(color = "Electrode") +
+    ggtitle(paste(savename,metaData,extraInfo)) +
+    My_Theme
+  print(tracePlot)
+  
+  
+  
+
+  
+}
+NormalizeBaseline <- function(trace, normTime = 0 ){
+  stimIndex = which(trace$Time == normTime)
+  for(i in c(3:ncol(trace)) ){
+    trace[,i] = trace[,i]-trace[stimIndex,i]
+  } # Normalize the trace w/ the baseline. make all start at zero.
+  trace = gather(trace, "electrode", "mV", 3:ncol(trace)) # change structure for ggplot management
+  return(trace)
+} ## INPUT trace spreaded i.e. each electrode as column. Won't work if data is not at 10Hz samplerate. Output: normalized, gathered trace for plotting.
+CalculateParameters <- function(trace, stimdelay = 0){
+# in the chunk during stimulation on.
+  stimon = which(trace$TimeOfDay=="F1")[1] + stimdelay
+  stimoff= which(trace$TimeOfDay=="F1")[2] + stimdelay 
+  stimchunk = na.omit(trace[stimon:stimoff,])
+  #plot(stimchunk$Time, stimchunk$mV, type="l") 
+          # determine maximum -peak.depol-
+  peak.depol =  min( stimchunk$mV )
+  peakdepol.frame =  max(which(trace$mV==peak.depol)-1)
+  peakdepol.time =  trace$Time[peakdepol.frame]
+          # determine mean V at last 500 ms of the stimulus -ss.depol-
+  ss.depol = mean( stimchunk$mV[(nrow(stimchunk)-50):nrow(stimchunk)] )
+  #plot(stimchunk$Time[(nrow(stimchunk)-50):nrow(stimchunk)], stimchunk$mV[(nrow(stimchunk)-50):nrow(stimchunk)])
+  
+  
+  # in the chunk between onset of stimulus and peak.depol
+  raisechunk = na.omit( trace[stimon:peakdepol.frame,] )
+  #plot(raisechunk$Time, raisechunk$mV, type="l") 
+            # determine max.depol.slope
+  raisechunk.slope = calculateslope(raisechunk$mV)
+  peak.depol.slope = min(na.omit(raisechunk.slope) )
+  peakdepolslope.frame = which(raisechunk.slope == peak.depol.slope ) + stimon
+  peakdepolslope.time = trace$Time[peakdepolslope.frame]
+   # plot(raisechunk$Time, raisechunk$mV, type="l") 
+   # plot(raisechunk.slope, type="l")
+  
+  
+  # in the chunk after end of stimulus.
+  decaychunk = na.omit(  trace[stimoff:nrow(trace),] )
+  #plot(decaychunk$Time,decaychunk$mV, type="l")
+          # determine time at 37% of ss.depol -tau-
+  tau.voltage = round(ss.depol*0.37,2)
+  tau.index = min(which( abs(decaychunk$mV- tau.voltage) == min( abs(decaychunk$mV- tau.voltage) ) ) + stimoff)
+  tau.abstime = trace$Time[tau.index]
+  tau = tau.abstime-trace$Time[stimoff+1]
+
+  return(list("peak.depol"=peak.depol, 
+             "peakdepol.time"=peakdepol.time, 
+             "peak.depol.slope"=peak.depol.slope,
+             "peakdepolslope.time"=peakdepolslope.time,
+             "ss.depol"=ss.depol,
+             "tau"=tau,
+             "tau.abstime"=tau.abstime,
+             "tau.voltage"=tau.voltage))
+
+} # input. dataframe for one pulse on one electrode 
+CheckSampleRate <- function(trace){
+  sampleRate = round(60/trace$Time[60],1) # 60 samples in x seconds that ran in the first 60 samples. (Hz)
+  if(round(sampleRate) <= 10){
+    print("ERROR! sample rate is not 10Hz. Quantification won't work")
+  } else {
+    print("Good! The sample rate is: ")
+    print(paste(sampleRate, "Hz"))
+  }
+  return(sampleRate)
+}
+filterTrace <- function(trace){
+  # Change NA for the value on the previous row
+  NArow = which(is.na(trace$mV))
+  trace$mV[NArow] = trace$mV[(E=NArow-1)] 
+  # smooth with Savitzky-Golay filter. 
+  # n is the amount of point befor/after the nth point to be averaged
+  # p is the filter order. Dont know what that is.
+  trace$mV = 
+    sgolayfilt( trace$mV , p = 1, n = 9) 
+  return(trace)
+}
+segment.trace.power1.6 <- function(trace){
+    ## for later: put in a for loop.
+  output = list()
+          # Power 1
+  # get 1 s pulse (should be the first!)
+  stimulus = "p1_1s"
+  cutfrom = stimTimes[1]-2 # Cuts trace 2 s before the first stimulus 
+  cutto   = stimTimes[3]-10 # and 10 s after
+  PlotTrace(trace, from=cutfrom, to = cutto, extraInfo = stimulus) 
+  Sys.sleep(1)
+  # cut out trace
+  tracei = rbind( 
+    trace[ which(trace$Time==round(cutfrom))[1]:which(trace$Time==round(cutto))[1], ],
+    trace[ which(trace$Time==round(cutfrom))[2]:which(trace$Time==round(cutto))[2], ]
+  )
+  
+  tracei$Stim = paste(trace$Stim[1],stimulus,sep = "_")
+  output = list(tracei)
+  names(output) = stimulus
+  
+        # get 10 s pulse (should be the second!)
+  stimulus = "p1_10s"
+  cutfrom = stimTimes[3]-2 # Cuts trace 2 s before the first stimulus 
+  cutto   = stimTimes[5]-10 # and 10 s after
+  PlotTrace(trace, from=cutfrom, to = cutto, extraInfo = stimulus)  
+  Sys.sleep(1)
+  # cut out trace
+  tracei = rbind( 
+    trace[ which(trace$Time==round(cutfrom))[1]:which(trace$Time==round(cutto))[1], ],
+    trace[ which(trace$Time==round(cutfrom))[2]:which(trace$Time==round(cutto))[2], ]
+  )
+  
+  tracei$Stim = paste(trace$Stim[1],stimulus,sep = "_")
+  output[[length(output)+1]] <- tracei
+  names(output)[length(output)] = stimulus
+  
+        # Power 6
+  # get 1 s pulse (should be the third!)
+  stimulus = "p6_1s"
+  cutfrom = stimTimes[5]-2 # Cuts trace 2 s before the first stimulus 
+  cutto   = stimTimes[7]-10 # and 10 s after
+  PlotTrace(trace, from=cutfrom, to = cutto, extraInfo = stimulus) 
+  Sys.sleep(1)
+  # cut out trace
+  tracei = rbind( 
+    trace[ which(trace$Time==round(cutfrom))[1]:which(trace$Time==round(cutto))[1], ],
+    trace[ which(trace$Time==round(cutfrom))[2]:which(trace$Time==round(cutto))[2], ]
+  )
+  
+  tracei$Stim = paste(trace$Stim[1],stimulus,sep = "_")
+  output[[length(output)+1]] <- tracei
+  names(output)[length(output)] = stimulus
+  
+        # get 10 s pulse (should be the fourth!)
+  stimulus = "p6_10s"
+  cutfrom = stimTimes[7]-2 # Cuts trace 2 s before the first stimulus 
+  cutto   = last(trace$Time) #stimTimes[8]+60 # and 10 s after
+  PlotTrace(trace, from=cutfrom, to = cutto, extraInfo = stimulus) 
+  Sys.sleep(1)
+  # cut out trace
+  tracei = rbind( 
+    trace[ which(trace$Time==round(cutfrom))[1]:which(trace$Time==round(cutto)-1)[1], ],
+    trace[ which(trace$Time==round(cutfrom))[2]:which(trace$Time==round(cutto)-1)[2], ]
+  )
+  
+  tracei$Stim = paste(trace$Stim[1],stimulus,sep = "_")
+  output[[length(output)+1]] <- tracei
+  names(output)[length(output)] = stimulus
+  return(output)
+} # only for traces with stimuli in this order p1.1s,p1.10s,p6.1s,p6.10s.
+calculateslope <- function(vector) {
+  slopetrace = NULL
+  for( i in 2:length(vector)){
+    slopei = vector[i]-vector[i-1]
+    slopetrace = append(slopetrace, slopei)  
+  }
+  slopetrace = append(slopetrace, slopetrace[length(slopetrace)])
+  return(slopetrace)
+} # input a 1xN vector | output a 1xN vector with values for the slope
+transmission.experiment <- function(){
+  # esto va antes del loop
+  p1s1.trace = NULL
+  p1s10.trace= NULL
+  p6s1.trace = NULL
+  p6s10.trace= NULL
+  # Esto va depues de filtrar y plotear el registro completo
+          ## Save stimulus trace
+  answer <- readline (prompt="Are the stim times ok? type values divided by [,] to change, [y] to continue and save or [n] to skip trace.  ")
+  while ( nchar(answer)<=15 & answer!="y" ){
+    print("No valid input, try again ")
+    answer <- readline (prompt="Are the stim times ok? type values divided by [,] to change, [y] to continue and save or [n] to skip trace.  ")
+  }
+  if( nchar(answer)>15 ){
+      answer = strsplit(answer,",")[[1]]
+      stimTimes = as.numeric(answer)
+      print("Stim times updated to ")
+      print(stimTimes)
+  } else if(answer == "n"){
+    next
+  }
+      ## Segment into the different stimuli
+  segments = segment.trace.power1.6(trace)
+  p1s1.trace = rbind(p1s1.trace,segments$p1_1s)
+  p1s10.trace= rbind(p1s10.trace,segments$p1_10s)
+  p6s1.trace = rbind(p6s1.trace,segments$p6_1s)
+  p6s10.trace= rbind(p6s10.trace,segments$p6_10s)
+      ##
+      ## SAVE
+  setwd(batchfolder)
+  write.csv(p1s1.trace, "p1s1.csv", row.names = FALSE)
+  write.csv(p1s10.trace, "p1s10.csv", row.names = FALSE)
+  write.csv(p6s1.trace, "p6s1.csv", row.names = FALSE)
+  write.csv(p6s10.trace, "p6s10.csv", row.names = FALSE)
+}
+segment.stimuli <- function(tracein, stimdelay = 0){
+  stimuli = stim.indexes
+  output = list()
+
+  for (s in seq(1,length(stimuli),2) ){ # take every second mark, so the first of every stimulus
+    # first stimulus. start to first s
+    delay = (stimdelay/sample.rate)*1000
+    # duration of the stimulus
+    stim.duration = round( ( tracein$Time[ stimuli[s+1] ] - tracein$Time[ stimuli[s] ] )*1000 )
+    
+    # select each electrode
+    bothelectrodes = NULL
+    for ( e in unique(tracein$electrode) ){
+      trace.e = dplyr::filter(tracein, electrode==e)
+        if ( s == 1 ){
+        trace.singlestim = trace.e[ (stimuli[1]-(2*sample.rate)) : stimuli[3], ]
+      } else if ( s == length(stimuli)-1 ) { # last stimulus. last s to end
+        trace.singlestim = trace.e[ (stimuli[s]-(2*sample.rate)) : nrow(trace), ]
+      } else { # all the rest
+        trace.singlestim = trace.e[ (stimuli[s]-(2*sample.rate)) : (stimuli[s+1]+(5*sample.rate)),]
+      }
+      plot(trace.singlestim$Time, trace.singlestim$mV, type="l", ylim=rev(c(0,-100)) ) +
+      abline(v = tracein$Time[ c(stimuli[s],stimuli[s+1])+stimdelay ], col="red") +
+      title(main = paste(stim.duration, "ms",sep = ""))
+      Sys.sleep(1)
+      # put into list
+      bothelectrodes = append(bothelectrodes, list( electrode = trace.singlestim))
+      names(bothelectrodes)[length(bothelectrodes)] = e
+    }
+    
+    
+    
+    
+    
+    
+
+    output[[length(output) + 1]] = append( bothelectrodes, list( delay = delay ) )
+    names(output)[[length(output)]] = paste(stim.duration,"ms") 
+  }
+  return(output)
+} # input complete dataframe
+AmIDone <- function(file){
+  CheckTraces = read.csv(file) 
+  pendingList = c()
+  if( nrow(  dplyr::filter(CheckTraces, Plot=="No" ))>0  ){
+    print( paste("You still need to analyse these plants for ",
+                 file, ":", sep = "") )
+    pendingTraces = dplyr::filter(CheckTraces, Plot=="No" )
+    for(i in unique(pendingTraces$Date) ){
+      missingDates = i
+      ids = unique( pendingTraces$id[which(pendingTraces$Date==i)] )
+      electrode = unique( pendingTraces$electrode [which(pendingTraces$Date==i)] )
+      print( paste(i,ids,electrode,sep = "-")  )
+      pendingList = append(pendingList,paste(i,ids,electrode,sep = "-") )
+    }
+  } else { 
+    print( paste("You're done with", file, "!!!") ) 
+    }
+  return(c(pendingList))
+  
+}
+findSWPvalues <- function(trace, plant=1){
+  ### Set reference time 0 when stimulus is applied: either at the first F1 value or or at the first maximum value.
+  if(length( which( is.na(trace)) ) > 0 ){
+    stimFrames =   which( is.na(trace))
+    if( length( which( is.na(trace))) > 2 ) {
+      stimFrames =  which( is.na(trace))[c(1,3)]
+    }
+    # Pick the first NaN (or F1 in DayTime column) for plant 1, and the 3rd NaN for plant 2
+    if( plant == 1){
+      stimFrame = stimFrames[1] ### Determines the stimulus frame by finding the first NaN. Which is when the pedal is pressed.
+    }
+    if( plant == 2){
+      stimFrame =   stimFrames[length(stimFrames)]  ### Determines the -later- stimulus frame for plant 2
+    }
+    
+  } else {
+    stimFrames =  c(90,95) 
+    # Pick the first NaN (or F1 in DayTime column) for plant 1, and the 3rd NaN for plant 2
+    if( plant == 1){
+      stimFrame = stimFrames[1] ### Determines the stimulus frame by finding the first NaN. Which is when the pedal is pressed.
+    }
+    if( plant == 2){
+      stimFrame =   stimFrames[2]  ### Determines the -later- stimulus frame for plant 2
+    }
+  }
+  
+  
+  
+  
+  ### Filter signal
+  trace[which(trace < -150)] = trace[1] # Make extreme values equal baseline. It's when the electrode looses contact.
+  # smooth with Savitzky-Golay filter. 
+  # n is the amount of point befor/after the nth point to be averaged
+  # p is the filter order. Dont know what that is.
+   trace = sgolayfilt(na.omit(trace) , p = 1, n = 3)
+  # trace = na.omit(trace) ## if not filtering, just omit NaNs
+  # Check trace (for debugging)
+  plot(trace, type = "l")+
+    abline(v=stimFrame) 
+  
+
+
+                        ### Initial baseline
+  bl = mean(trace[ 1:(stimFrame-2)]) # average from 0 to before stimFrame
+  
+  
+  
+  ### Find peak depolarization
+  maxDepol = min(   na.omit( trace[ stimFrame:length(trace) ] )   ) # find peak depol. It's extracellular recording, so depol goes to negative
+  
+  depolFrame = which(trace == maxDepol) # Find frame at maximum depol 
+  
+  
+  
+                        ### hyperpol.amplitude1
+  ### Find peak of first hyperpolarization between stimulus and depol peak
+  maxHyperpol = max(  na.omit(trace[ (stimFrame-10) : depolFrame ])   )
+  hyperpolFrame =  which(trace == maxHyperpol)# Find frame at maximum hyperpol
+  hyperpol.amplitude1 = maxHyperpol-bl
+  
+  
+  
+                        ### depol.amplitude
+  depol.amplitude = maxDepol - abs(maxHyperpol) # Calculate max depol from the peak of hyperpol rather than from the initial baseline
+  
+  
+  
+  
+                        ### minDepolrate frame
+
+  # find the peak slope at depol part of the trace
+  # focus on the chunk between max hyperpol an max depol
+  depolTrace = trace[hyperpolFrame:depolFrame] #trace[ (stimFrame+10) : depolFrame  ]  
+  depoltrace.firstderivative = calculateslope(depolTrace)
+  min.depol.rate =  min(depoltrace.firstderivative)
+  HalfDepolframe = min( which(depoltrace.firstderivative == min.depol.rate) )+hyperpolFrame-stimFrame
+# to find half max frame, substract the halfMax V from the trace and pick the closest to 0.
+  # HalfDepolframe = min (
+  #   which (  abs((depolTrace)-halfDepol ) == min( abs((depolTrace)-halfDepol))  )  ## Find the time at Halfdepol
+  # ) #+ stimFrame 
+  
+  
+  
+                      ### max hyperpol rate
+  # focus on the chunk between max hyperpol an max depol
+  hyperpolTrace = trace[(hyperpolFrame-20) : hyperpolFrame] # checks the trace 20s before the peak hyperpol.
+  hyperpoltrace.firstderivative = calculateslope(hyperpolTrace)
+  max.hyperpol.rate = max(hyperpoltrace.firstderivative)
+  ### Save time of max slope
+  max.slope.frame = min( which(hyperpoltrace.firstderivative == max.hyperpol.rate) )+hyperpolFrame-20-stimFrame
+  
+                      ### hyperpol.duration from max hyperpol slope to min depol slope
+  
+  hyperpol.duration = HalfDepolframe - max.slope.frame
+  
+                          ### second baseline
+  ### Find second baseline i.e. after repolarization
+  bl2 = mean(trace[   (length(trace)-60): length(trace)   ])
+  
+  
+  
+  
+                        ### repol.amplitude
+    # focus on repolarization part of the trace
+  repolTrace = trace[(depolFrame+1):length(trace)]
+  maxRepol = max(repolTrace) # maximum repolarization
+  maxRepolframe = which(repolTrace == maxRepol)+depolFrame
+  repol.amplitude = maxRepol-bl2 # Find hyperpolarization amplitude in the recovery phase
+  # former maxHyperpol2
+  
+  
+                        ### maxRepol/2 frame
+  halfRepol = maxRepol + ((maxDepol-maxRepol)/2) # bl2 + (maxDepol - bl2)/2 # 
+  halfRepolframe =  max( which( abs(repolTrace-halfRepol) <= min(abs(repolTrace-halfRepol))+1 ) )   + depolFrame - stimFrame
+    
+  
+                            ### Depolarization duration
+  #Time from halfmax raise and decay        
+  depDur = halfRepolframe - HalfDepolframe
+  
+  
+  #return all these
+  SWPvalues = data.frame(
+  bl,
+  maxDepol,
+  hyperpol.amplitude1,
+  max.hyperpol.rate,
+  max.slope.frame,
+  maxHyperpol,
+  HalfDepolframe,
+  min.depol.rate,
+  depol.amplitude,
+  halfRepolframe,
+  maxRepol, 
+  repol.amplitude,
+  bl2,
+  depDur,
+  hyperpol.duration,
+  stimFrame
+  )
+  return( list(trace, SWPvalues))
+  
+}
+plotAndAnalyze <- function(genotypeFile){
+  # Load file newly
+  ALLtraces = read.csv( genotypeFile )
+  # Load summary file if exists.
+  if( file.exists( paste(savename,"Summary.csv",sep = "")) )  {
+    fTraceSummary = read.csv( paste(savename,"Summary.csv",sep = "") )
+  } else {
+    fTraceSummary = NULL
+  }
+  # start w/ emptying variables
+  Date = c()
+  Electrode = c()
+  id = c()
+  Leaf = c()
+#### filter to get to one single plant
+  subSet0 = dplyr::filter(ALLtraces,Plot == "No") 
+  for (datei in unique(subSet0$Date)){ # pick one date
+    subSet1 = dplyr::filter(subSet0, Date == datei)
+    # create folder if it doesn't exist
+    if( dir.exists(paste( savename,"-",datei,sep = ""))==FALSE ){
+      dir.create(paste( savename,"-",datei,sep = ""))
+    }
+     for(electrodei in unique(subSet1$electrode) ) { # pick one stimulus form
+      subSet2 = dplyr::filter(subSet1, electrode == electrodei) 
+      for(IDi in unique(subSet2$id) ) { # pick one id
+        subSet3 = dplyr::filter(subSet2, id == IDi) 
+        for (leafi in unique(subSet3$Leaf) ){ # pick a leaf
+          # single trace to be analyzed
+          trace = dplyr::filter(subSet3, Leaf == leafi)
+          trace = downsample(trace)
+          ### Check trace to decide if needs trimming of final part
+          
+          
+          plot(trace$V, type="l")
+          
+          
+          
+          # Trim or not
+          answer <- readline (prompt="Trim trace? Second+ENTER, just ENTER to skip trimming, or >n< for skipping & erasing trace  ")
+          if(nchar(answer)>0){
+            if(answer == "n"){
+              print("Trace not saved")
+              #### Erase the trace is not saved!
+              traceIndeces = which(ALLtraces$Date == datei & 
+                                     ALLtraces$Stim==stimi &
+                                     ALLtraces$id == IDi &
+                                     ALLtraces$Leaf == leafi )
+              ALLtraces = ALLtraces[-traceIndeces,]
+              write.csv(ALLtraces, paste(savename,".csv",sep = ""), row.names = FALSE)
+              traceIndeces = c()
+              
+              break # this should go to the next leaf
+              
+            } else if( !is.na( as.numeric(answer) )) {
+              trace = trimTrace(trace, answer)
+            } else {
+              print("No valid input ")
+              answer <- readline (prompt="Trim trace? Second+ENTER, just ENTER to skip trimming, or >n< for skipping & erasing trace  ")
+            }
+            
+          }  
+      
+          
+  ### FUNCTION TO CALCUATE PARAMETERS         
+          SWPanalysis = findSWPvalues(trace$V)
+          trace = na.omit(trace)
+          # Save trace and values independently
+          trace$V = SWPanalysis[[1]]
+          SWPvalues = SWPanalysis[[2]]
+          trace$Time = trace$Time - SWPvalues$stimFrame  # Make time at stimulus frame = 0
+          
+          
+  
+  ### PLOT!        
+          plotTitle = paste(leafi,"-",IDi,".Electrode ",electrodei, sep="")
+          
+            plot(x = trace$Time, y = trace$V, type = "l", main = plotTitle, ylim=c(-100,40) ) +
+            abline(h = SWPvalues$bl, col="black", lty = 2) +
+            abline(v = SWPvalues$HalfDepolframe, col="red", lty=2) +
+            abline(v = SWPvalues$max.slope.frame, col="red") +
+            abline(v = SWPvalues$halfRepolframe, col="green") +
+            abline(h = SWPvalues$maxDepol, col = "red") +
+            abline(h = SWPvalues$maxHyperpol, col = "blue") +
+            abline(h = SWPvalues$maxRepol, col = "blue") +
+            abline(h = SWPvalues$bl2, col="green", lty = 2) +
+            abline(v = 0, col="black", lty = 2)
+  
+           
+            print(paste(datei,IDi,electrodei,leafi,sep = "-"))
+            print(SWPvalues)
+          
+          
+  #### Save or not
+          if(abs(SWPvalues$depol.amplitude) < 10){
+            answer <- readline (prompt="NO RESPONSE! save as failed trace? [y];[n]    ")
+            if(answer == "y"){
+              SWPvalues$depDur = NA
+              plotTitle = paste("FAIL",plotTitle, sep = "-")
+            }
+          } else {
+            answer <- readline (prompt="Press [y] to save; [n] to skip    ")
+          }
+            
+            
+          
+          while ( is.null(answer)==FALSE ){ #answer != "y" || answer != "n"
+            traceIndeces = which(ALLtraces$Date == datei & 
+                                   ALLtraces$Electrode==electrodei &
+                                   ALLtraces$id == IDi &
+                                   ALLtraces$Leaf == leafi )
+            if (answer == "y") {
+              # put in dataframe
+              Date = datei
+              Electrode = electrodei
+              id = IDi
+              Leaf = leafi
+              
+              # save data
+              fTraceSummary = rbind(fTraceSummary, cbind(Date,Electrode,id,Leaf,SWPvalues) )
+                ## get rid of infinite values
+              for(i in 5:ncol(fTraceSummary)){
+                fTraceSummary[which(fTraceSummary[,i] == Inf),i] = NaN
+              }
+              write.csv(fTraceSummary, paste(savename,"Summary.csv",sep = ""), row.names = FALSE)
+              
+              # save plot
+              pdf(file = paste( savename,"-",datei,"/", plotTitle, ".pdf" , sep = "") )
+              plot(x = trace$Time, y = trace$V, type = "l", main = plotTitle, ylim=c(-100,40)) +
+                abline(h = SWPvalues$bl, col="black", lty = 2) +
+                abline(v = SWPvalues$HalfDepolframe, col="red",lty=2) +
+                abline(v = SWPvalues$max.slope.frame, col="red") +
+                
+                abline(v = SWPvalues$halfRepolframe, col="green") +
+                abline(h = SWPvalues$maxDepol, col = "red") +
+                abline(h = SWPvalues$maxHyperpol, col = "blue") +
+                abline(h = SWPvalues$maxRepol, col = "blue") +
+                abline(h = SWPvalues$bl2, col="green", lty = 2) +
+                abline(v = 0, col="black", lty = 2) 
+              dev.off()
+              
+              # update database of traces. label the plotted as plotted.
+              # Set plot status to YES
+              ALLtraces$Plot[traceIndeces] = "Yes"
+              write.csv(ALLtraces, paste(savename,".csv",sep = ""), row.names = FALSE)
+            
+              break
+            }
+            else if (answer == "n") {
+              print("Trace not saved")
+              #### borrar del archivo si no se guarda!
+              ALLtraces = ALLtraces[-traceIndeces,]
+              write.csv(ALLtraces, paste(savename,".csv",sep = ""), row.names = FALSE)
+              traceIndeces = c()
+  
+              break
+            }
+            else {
+              print("Not valid input")
+              answer <- readline (prompt="Press [y] to save; [n] to skip")
+              
+            }
+          } 
+        }
+      }
+    }
+  }
+  return(fTraceSummary)
+}
+downsample <- function(df){
+  newIndeces = sort( 
+      c( which(df$Time%%1==0), which(is.na(df$Time)==TRUE) ), 
+      decreasing = FALSE)
+    df = df[newIndeces,]
+    return(df)
+}
+doFilter = 0
+home = getwd()
+summaryparameters = c("Genotype",
+                   "record.id",
+                   "electrode",
+                   "stim.position",
+                   "stim.power",
+                   "stim.duration",
+                   "peak.depol",
+                   "peak.depoltime",
+                   "peak.depol.slope",
+                   "peakdepolslope.time",
+                   "ss.depol",
+                   "tau")
+```
+
+2. Create a batch folder
+```{r}
+batchname = "230615-analysis"
+date = 230615
+batchfolder = paste(home,batchname,sep="/")
+setwd(home)
+if(file.exists(batchname)==FALSE){
+  dir.create(batchfolder)
+}
+```
+
+3. 
+input   - yyy_Export.txt files in the home folder. Information in electrode 1 column like this: E1_genotye_L#(leaf number)
+Output  - trace plot and .csv file with the trace dataframe.
+```{r}
+setwd(home)
+list.files()
+
+all.traces = NULL
+recording.id = 1
+for( f in list.files()[grep(".txt",list.files())] ){ # 
+  filename = f
+  savename = substr( filename, 0, nchar(filename)-4 )
+  savename = strsplit(savename,split = "_")[[1]][1]
+  trace = read.delim(  filename  ) # import .txt file in the home folder
+  #trace = read.csv("array1_Export.csv"  )
+  sample.rate = round( CheckSampleRate(trace) )
+  
+  # Save info from E1 column name
+  metaData = names(trace)[grep("E1", names(trace))]
+  leaf = strsplit(metaData,"_")[[1]][grep("L",strsplit(metaData,"_")[[1]])]
+  stimulus = strsplit(metaData,"_")[[1]][grep("S",strsplit(metaData,"_")[[1]])]
+  genotype = strsplit(metaData,"_")[[1]][2]
+  electrodeNums = NULL## Save the number of the electrode
+  for(i in  names(trace)[3:ncol(trace)] ){
+    electrodeNums = append(electrodeNums, as.numeric( substr(i,2, 2) ))
+  }
+  names(trace)[3:ncol(trace)] = electrodeNums # Make the columns' names numeric variables
+  # Select just few electrodes.
+  pickElectrodes = c(1,2)
+  trace = trace[,c(1,2,which(names(trace)%in%pickElectrodes))]
+  
+  stim.indexes =  which(  is.na(trace$Time)  ) -1
+  stimTimes = trace$Time[stim.indexes]
+
+
+  # normalize and gather
+  trace = NormalizeBaseline(trace, normTime = 1)
+  # fix voltage units to mV
+  trace$V = trace$mV * 100
+  #
+  ##
+  ###
+  #### NORMALIZE TRACE and plot
+  trace$Genotype = genotype
+  trace$Leaf = leaf
+  trace$Stimulus = stimulus
+  trace$id = recording.id 
+  PlotTrace(trace)
+  # Filter?
+  answer <- readline (prompt="Filter? [y], [n]  ")
+  while ( answer!="y" & answer!="n" ){
+    print("No valid input, try again ")
+    answer <- readline (prompt="Filter? [y], [n]  ")
+  }
+  if (answer == "y"){
+    trace = filterTrace(trace)
+    PlotTrace(trace)
+  }
+  print(paste(length(stimTimes)," stimuli at (s)",sep = ""))
+  print(stimTimes)
+  
+  ggsave(paste(batchfolder,"/",savename,".pdf",sep = ""))
+  #write.csv(trace, file = paste(batchfolder,"/",savename, ".csv",sep = ""))
+  all.traces = rbind(all.traces, trace)
+  #save(trace, file = paste(batchfolder,"/",savename, ".RData",sep = ""))
+  # transmission.experiment() # runs that analysis
+  
+      ##
+  recording.id = recording.id+1
+  setwd(home)
+}
+```
+save the compiled traces! Cannot be done in the chunk above automatically
+```{r}
+all.traces$Date = date
+all.traces$Plot = "No"
+write.csv(all.traces, file = paste(batchfolder,"/",genotype, ".csv",sep = ""))
+```
+
+
+4. 
+Calculate parameters of all the traces.
+```{r}
+setwd(batchfolder)
+
+savename = list.files()[grep(".csv", list.files())]
+savename <- substr(savename,1,nchar(savename)-4)
+plotAndAnalyze(list.files()[grep(".csv", list.files())])
+
+
+setwd(home)
+```
+
+
+5. Plot and run statistics on data parameters.
+5.1. pick parameters to run stats on
+```{r}
+Parameters = c("hyperpol.amplitude1", 
+               "depol.amplitude",
+               "min.depol.rate",
+               "max.hyperpol.rate",
+               "repol.amplitude", 
+               "bl2",
+               "depDur",
+               "hyperpol.duration",
+               "HalfDepolframe")
+```
+
+
+Plot and save one violin plot for each parameter quantified including all genotypes recorded.
+```{r}
+setwd(batchFolder)
+# Open all the "Summary" files in the folder.
+SummaryData = NULL
+for( i in grep("Summary", list.files()) ){
+  data = read.csv( list.files()[i] )
+  data$Genotype = substr(list.files()[i], 1, nchar(list.files()[i])-11 )
+  SummaryData = rbind(SummaryData, data )
+}
+
+
+# omit all the recordings clasified as fail. Those have depDur = NA
+# failedtrace = which(is.na(SummaryData$depDur))
+# SummaryData = SummaryData[-failedtrace,]
+
+# find mean and SEM, shapiro test for each genotype
+    # also
+# Non-parametric test comparing each mutant to Col0 for this batch. 
+# Mann-whitney U test (the wilcox.test) & Kruskal-Wallis
+StatsData = NULL
+for ( g in unique(SummaryData$Genotype) ){ # pick genotype
+  for(l in unique(dplyr::filter(SummaryData, Genotype==g)$Leaf) ){ # pick leaf for genotype g.
+    for( v in which( names(SummaryData)%in%Parameters ) ) { # loop through columns
+      data = dplyr::filter(SummaryData, Genotype==g & Leaf==l)[,v] %>% na.omit()
+      print(paste(g,l, names(SummaryData)[v] ))
+      n = length( data )
+      average = mean( data )
+      sem = std.error( data )
+      # run normality shapiro test
+      if(length( data ) < 3 ){
+        Shapiro = 0
+      } else {
+        Shapiro = round( shapiro.test( data )$p.value, 3)
+      }
+      
+      # Mann-Whitney U test.
+      WM =  wilcox.test( x= data,
+                   y=dplyr::filter(SummaryData,Genotype==controlgroup & Leaf==l)[,v],
+                   paired = FALSE,
+                   alternative = "t", # alternative hypothesis is two sided.
+                   mu = 0 ) # Ho is that both samples distribution location don't shift. i.e. shift by mu=o
+      WM = round( WM$p.value, 3)
+      
+      # Kruskal-wallis test
+      if(g==controlgroup){ # Make it 1 if Col0 is compared to itself
+        KW = 1
+      } else {
+        dataKW = dplyr::filter(SummaryData, Genotype==g | Genotype==controlgroup & Leaf==l)[,c(v,which(names(SummaryData)=="Genotype"))]
+      KW = kruskal.test( dataKW[,1] ~ Genotype, data = dataKW)
+      KW = round(KW$p.value,3)
+      }
+      
+      
+      StatsData = rbind(StatsData, data.frame(g,l,names(SummaryData)[v],average,sem, n, Shapiro, WM, KW ))
+    }
+  } 
+}
+names(StatsData) <- c("Genotype","Leaf","Variable", "Mean", "SEM", "N", "ShapiroTest", "Whitney-Mann", "Kruskal-Wallis")
+write.csv(StatsData, paste(paste(unique(SummaryData$Date),collapse="."),"-basicStats.csv",sep = "" ) )
+
+
+
+
+#############################
+
+
+# Violin plot for each parameter calculated
+My_Theme =  theme(
+  axis.text.x = element_text(color = "black", size = 20, angle = 0, hjust = 0.5, vjust = 0, face = "plain"),
+  axis.text.y = element_text(color = "black", size = 20, angle = 0, hjust = 0 , vjust = 0.5, face = "plain"),
+  axis.title.x = element_blank(), #element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), #
+  axis.title.y = element_text(color = "black", size = 25, angle = 90, hjust = 0.5, vjust = 1, face = "plain"),
+  plot.title = element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), # element_blank(), 
+  legend.text = element_text(size = 20),
+  legend.title = element_text(hjust = 0.1, size = 20),
+  panel.grid.major.y = element_blank(),
+  panel.grid.minor.y = element_blank(),
+  panel.grid.major.x = element_blank(), #element_line()
+  panel.grid.minor.x = element_blank()) 
+
+SummaryData$Electrode = as.character(SummaryData$Electrode)
+for( v in which( names(SummaryData)%in%Parameters ) ) {
+  units = "Voltage (mV)"
+  if(names(SummaryData)[v]%in%c("depDur","HalfDepolframe") ){
+    units = "Time (s)"
+  } else if ( names(SummaryData)[v]%in%c("min.depol.rate","max.hyperpol.rate") ){
+    units = "Slope(mV/s)"
+  }
+  plotName = paste(paste(unique(SummaryData$Date),collapse="."), "-",
+                   names(SummaryData)[v], sep = "")
+  
+  
+  traceParamPlot <- ggplot(SummaryData, aes(`Electrode`, SummaryData[,v])) +
+  geom_violin() +
+  geom_jitter(shape=16, position=position_dodge(1)) +
+    
+  #  geom_label(data = dplyr::filter(StatsData, Variable == names(SummaryData)[v]) ,
+             # aes(label = `Whitney-Mann`, y = Inf), inherit.aes = TRUE, 
+             # position=position_dodge(1), vjust = 1.5 ) +
+             # #aes(x = `Genotype`, y = 1, label = `Whitney-Mann`,  color = `Leaf`) ) +
+    
+  ylab (units) + 
+  #xlab ("Time (s)") + 
+  #labs(color = "Leaf") +
+  ggtitle(plotName) +
+  My_Theme
+  print(traceParamPlot)
+  
+  ggsave(paste(plotName,".pdf",sep=""),traceParamPlot )
+  Sys.sleep(0.2)
+}
+
+
+
+setwd(home)
+
+
+```
+
+
+

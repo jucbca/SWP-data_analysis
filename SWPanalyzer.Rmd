@@ -616,8 +616,7 @@ for (f in list.files()){
       c( which(genotypeData$Seconds%%1==0), which(is.na(genotypeData$Seconds)==TRUE) ), 
       decreasing = FALSE)
     genotypeData = genotypeData[newIndeces,]
-      # Fix units on voltage to milivolts 
-      
+
     
       # save i    
       write.csv(genotypeData, paste( batchFolder,"/",traceList[[p]]$Genotype[1],".csv",sep = "" ), row.names = FALSE )
