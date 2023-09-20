@@ -75,7 +75,7 @@ Along the process everything is saved in a folder that you will named in step 2.
 
 First thing to do: Paste a copy of the exported folders with the data from one batch of experiments.
 
-The analysis is divided in 4 steps. Run them in order. There is a checkpoint between steps; this means that it is better if you don't close the program before finishing all the sub-steps in a step. 
+The analysis is divided in 4 steps. Run them in order. There is a checkpoint between steps; this means that it is better if you don't close the program before finishing all the sub-steps (3.1,3.2,3.3) in a step (3).  
 If necessary to close the program and continue later, do it after finishing one full step. Remember to run step 1 every time you open the program, even if you are not starting from scratch.
 
          Steps:
@@ -92,8 +92,7 @@ Technical guidelines.
 https://rmarkdown.rstudio.com/authoring_quick_tour.html
 ///////////////////////////////////////////////////////////////////////////////
 
-## things to do
-- change V to mV in the column name.
+## New things to do
 - include the duration of hyperpol peak in Parameters.
    
                                     
