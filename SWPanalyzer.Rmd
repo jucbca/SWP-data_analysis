@@ -96,7 +96,7 @@ https://rmarkdown.rstudio.com/authoring_quick_tour.html
 - include the duration of hyperpol peak in Parameters.
    
                                     
-1. Function and library loading
+# 1. Function and library loading
 
 - Run this chunk once every time you start the program.
 If you don't have the packages installed in your computer do it by typing in the console:
@@ -526,7 +526,7 @@ print("Continue with step 2.1 or where you left")
 2. Convert the data from Labscribe into dataframe for analysis.
 Create a folder with the name of your election. Here all the output will be saved.
 
-2.1. Write your folder's name in the foldername variable. 
+# 2.1. Write your folder's name in the foldername variable. 
      Wrire your control group in the controlgroup variable. This is the control condition Example. Col0 if the treatment is different genotypes   
                    Mannitol if the treatment is different drugs 
 
@@ -541,7 +541,7 @@ batchFolder = paste(home,foldername,sep="/")
 print("Continue with step 2.2") ###
 ```
 
-2.2. Run this to extract the data and save it in a folder with the name previously given. Ignore the errors that are shown at the end. This is due to the pedal (F1) marks in the traces. Check that you have the >genotype<.csv files in the folder that you created in the last step and continue with step 3.
+# 2.2. Run this to extract the data and save it in a folder with the name previously given. Ignore the errors that are shown at the end. This is due to the pedal (F1) marks in the traces. Check that you have the >genotype<.csv files in the folder that you created in the last step and continue with step 3.
 
 If this stops with an error instead of a success message, the file last printed does not have the proper formating. Check that column names fit the INPUT conditions above.
 
@@ -638,7 +638,7 @@ Make sure you have the batch folder in the home directory, as created in step 2.
 Also make sure to have written and run step 2.1 with the proper batch folder name.
 
  
-3.1. Check traces to be done
+# 3.1. Check traces to be done
 
 - Run to see how many and which traces you have to analyze.
 ```{r}
@@ -655,7 +655,7 @@ print("Continue with step 3.2")
 ```
 
 
-3.2. Pick and analyze traces
+# 3.2. Pick and analyze traces
 
 This function will show you a trace and ask you whether to 
   trim and save,  (input the second at which to trim, then ENTER)
@@ -685,7 +685,7 @@ for(f in names(pendingFiles)){
 }
 ```
 
-3.3.
+# 3.3.
 Check status of analysis
 ```{r}
 ## Update pending files.
@@ -710,7 +710,7 @@ setwd(home)
 
 4. Plot and run statistics on data parameters.
 
-4.1.
+# 4.1.
 Plot and save one violin plot for each parameter quantified including all genotypes recorded.
 ```{r}
 setwd(batchFolder)
@@ -832,9 +832,9 @@ print(" Continue with step 4.2")
 
 
 
-4.2.
+# 4.2.
 Plot the mean of all aligned traces. Saves the plots as PDFs in the batch folder
-input - StatsData from step 4.1, >genotype<.csv files for genotypes in StatsData, SummaryData compiled from summary files in step 4.1.
+input - StatsData from step 4.1, >genotype<.csv files for genotypes in StatsData, SummaryData compiled from summary files in step 4.1
 output - average trace with SEM overlaid.
 ```{r}
 setwd(batchFolder)
