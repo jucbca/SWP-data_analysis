@@ -833,7 +833,7 @@ print(" Continue with step 4.2")
 
 
 # 4.2.
-Plot the mean of all aligned traces. Saves the plots as PDFs in the batch folder
+Plot the mean of all aligned traces chosen in the process above. Saves the plots as PDFs in the batch folder
 input - StatsData from step 4.1, >genotype<.csv files for genotypes in StatsData, SummaryData compiled from summary files in step 4.1
 output - average trace with SEM overlaid.
 ```{r}
@@ -920,6 +920,104 @@ for(g in  unique(StatsData$Genotype)){
 setwd(home)
 print("Congrats! you are done. Start another batch or leave. You deserve it")
 ```
+///////////////////////////////////////////////////////////////////////////////
+
+
+# 5 Plot mean after manual data selection
+
+Plot the mean of all aligned traces of ONE genotype, CHOSEN BY HAND. 
+input - >genotype<.#.csv files. INPUT BY HAND THE DATES AND IDs.
+output - >genotype<_meanSEM.pdf trace with average trace and SEM overlaid.
+">genotype<_MeanPlotData.csv" with the raw data, mean and SEM.
+```{r}
+# ENTER INFO HERE before running
+plot.ids = list( "230228" = c(1,3,4,5,7,8,9,10,11,14,15,16,17,18,19,20),
+                 "231005" = c(2,3,6,7,8,9,10,13,14,15,16,18), #,12
+                 "231121" = c(2,3,4,5,6,7,10,11,14)
+      )
+genotype = "Col-0"
+
+#####
+setwd(home)
+data = NULL
+for( f in list.files()[grep(".csv",list.files())] ){
+  print(f)
+  data = rbind(data, read.csv(f))
+}
+
+# data = read.csv("MeanPlotData.csv")
+# pick only the traces stated in the list
+data.plot = data.frame()
+for( i in 1:length(names(plot.ids)) ){
+  data.plot = rbind ( data.plot, 
+                      dplyr::filter(data, Date %in% names(plot.ids)[i] & 
+                      id %in% plot.ids[[i]] &
+                      Leaf == "L13") 
+                      ) 
+}
+
+# determine time only first 300 seconds
+time = data.frame("Seconds"= c(0:599) )
+# transform and align the data structure 
+data.plot = data.plot %>% select(Seconds,V,Date,id) %>% unite(id, 3:4 ,sep="_")
+n = unique(data.plot$id) %>% length()
+meanPlot = time 
+for(i in 1:length(unique(data.plot$id)) ){
+  vector.i = dplyr::filter(data.plot, id== unique(data.plot$id)[i])$V
+  # plot(vector.i, type="l")
+    # align using the max slope
+  slope.i = calculateslope(vector.i)
+  # plot(slope.i, type="l")
+  align.point = which(slope.i == min(na.omit(slope.i)) )
+  vector.i = vector.i [(align.point-99):(align.point+500)]
+    # put into matrix with the others
+  meanPlot =  cbind( meanPlot, data.frame("new" =  vector.i ) ) 
+  
+  names(meanPlot)[which(names(meanPlot)=="new")] = unique(data.plot$id)[i]
+}
+head(meanPlot)
+
+# get the mean and SEMs
+
+meanPlot$Mean = rowMeans(meanPlot[2:ncol(meanPlot)])
+meanPlot$pSEM = meanPlot$Mean + 
+      (apply(meanPlot,1,na.omit(sd))/rowSums(!is.na(meanPlot))  )
+meanPlot$nSEM = meanPlot$Mean -
+      (apply(meanPlot,1,na.omit(sd))/rowSums(!is.na(meanPlot))  )
+# save the selected traces and their mean±SEM
+write.csv(meanPlot, paste(genotype,"MeanPlotData.csv",sep = "_") , row.names = FALSE)
+
+# Plot mean and SEM
+meanOnly = data.frame(Seconds=meanPlot$Seconds, 
+                          Mean=meanPlot$Mean,
+                          pSEM=meanPlot$pSEM,
+                          nSEM=meanPlot$nSEM)
+ggplot(na.omit(meanOnly), aes(x = Seconds))+
+  geom_line(aes(y = Mean)) +
+  geom_line(aes(y = pSEM),alpha=0.5,color="blue") +
+  geom_line(aes(y = nSEM),alpha=0.5,color="blue") +
+  ylab ("mV") + 
+  xlab ("Time (s)") + 
+  ylim (-100,40) +
+    #labs(color = "Leaf") +
+  ggtitle( paste(genotype,"_L13"," n=",n," mean±SEM", sep = "") ) +
+  theme(
+  axis.text.x = element_text(color = "black", size = 20, angle = 0, hjust = 0.5, vjust = 0, face = "plain"),
+  axis.text.y = element_text(color = "black", size = 20, angle = 0, hjust = 0 , vjust = 0.5, face = "plain"),
+  axis.title.x = element_text(color = "black", size = 25, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), #element_blank(), #element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), #
+  axis.title.y = element_text(color = "black", size = 25, angle = 90, hjust = 0.5, vjust = 1, face = "plain"),
+  plot.title = element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), # element_blank(), 
+  legend.text = element_text(size = 20),
+  legend.title = element_text(hjust = 0.1, size = 20),
+  panel.grid.major.y = element_line(), # element_blank()
+  panel.grid.minor.y = element_line(),
+  panel.grid.major.x = element_line(), #element_line()
+  panel.grid.minor.x = element_blank() )
+ggsave(paste(genotype,"_meanSEM.pdf",sep = ""))
+    
+
+```
+
 ///////////////////////////////////////////////////////////////////////////////
 
 
