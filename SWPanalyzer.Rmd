@@ -788,21 +788,13 @@ for ( g in unique(SummaryData$Genotype) ){ # pick genotype
                    mu = 0 ) # Ho is that both samples distribution location don't shift. i.e. shift by mu=o
       WM = round( WM$p.value, 3)
       
-      # Kruskal-wallis test
-      if(g==controlgroup){ # Make it 1 if Col0 is compared to itself
-        KW = 1
-      } else {
-        dataKW = dplyr::filter(SummaryData, Genotype==g | Genotype==controlgroup & Leaf==l)[,c(v,which(names(SummaryData)=="Genotype"))]
-      KW = kruskal.test( dataKW[,1] ~ Genotype, data = dataKW)
-      KW = round(KW$p.value,3)
-      }
       
       
-      StatsData = rbind(StatsData, data.frame(g,l,names(SummaryData)[v],average,sem, n, Shapiro, WM, KW ))
+      StatsData = rbind(StatsData, data.frame(g,l,names(SummaryData)[v],average,sem, n, Shapiro, WM ))
     }
   } 
 }
-names(StatsData) <- c("Genotype","Leaf","Variable", "Mean", "SEM", "N", "ShapiroTest", "Whitney-Mann", "Kruskal-Wallis")
+names(StatsData) <- c("Genotype","Leaf","Variable", "Mean", "SEM", "N", "ShapiroTest", "Whitney-Mann")
 write.csv(StatsData, paste(paste(unique(SummaryData$Date),collapse="."),"-basicStats.csv",sep = "" ) )
 
 
