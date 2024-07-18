@@ -62,7 +62,6 @@ This is 2 plants.
 - a mutant with electrodes 3 on leaf 13 and 2 on leaf 08
 
     OUTPUT:   
-    each step yields an output.
 1. A folder with a name of choice inputed in step 2.1
 In this folder: 
 2.  a >genotype<->date< folder with all the traces corresponding to that combination. Each image is saved as the plant#.L##
@@ -81,11 +80,11 @@ In this folder:
                                   INSTRUCTIONS
 
 Follow these steps:
-  1. Click on create a project on the top left of this window to create a new project. This will create a folder that will be your "home" directory. In this home directory you put the raw files to be analyzed . 
+  1. Click on create a project on the top left of this window to create a new project. This will create a folder that will be your "home" directory. 
 
-  2. In the gear instructions at the top of the window select "Chunk output in console" instead of "Chunk output inline". This will show all the steps of the process properly in the console.
+  2. In the "gear" button at the top of the window select "Chunk output in console" instead of "Chunk output inline". This will show all the steps of the process properly in the console.
   
-  3. Paste a copy of the exported folders with the .txt data from one batch of experiments into the home folder you just created.
+  3. Paste a copy of the exported folders with the .txt data from one batch of experiments into the home folder you just created (use format described above in the INPUT section). 
   
   4. Run the chunks in order (see below how to do that). If ran successfully, each chunk will indicate you to go to the next.
   
@@ -761,9 +760,7 @@ if (length(failedtrace)>0 ){
 
 
 # find mean and SEM, shapiro test for each genotype
-    # also
-# Non-parametric test comparing each mutant to Col0 for this batch. 
-# Mann-whitney U test (the wilcox.test) & Kruskal-Wallis
+
 StatsData = NULL
 for ( g in unique(SummaryData$Genotype) ){ # pick genotype
   for(l in unique(dplyr::filter(SummaryData, Genotype==g)$Leaf) ){ # pick leaf for genotype g.
@@ -779,22 +776,12 @@ for ( g in unique(SummaryData$Genotype) ){ # pick genotype
       } else {
         Shapiro = round( shapiro.test( data )$p.value, 3)
       }
-      
-      # Mann-Whitney U test.
-      WM =  wilcox.test( x= data,
-                   y=dplyr::filter(SummaryData,Genotype==controlgroup & Leaf==l)[,v],
-                   paired = FALSE,
-                   alternative = "t", # alternative hypothesis is two sided.
-                   mu = 0 ) # Ho is that both samples distribution location don't shift. i.e. shift by mu=o
-      WM = round( WM$p.value, 3)
-      
-      
-      
-      StatsData = rbind(StatsData, data.frame(g,l,names(SummaryData)[v],average,sem, n, Shapiro, WM ))
+
+      StatsData = rbind(StatsData, data.frame(g,l,names(SummaryData)[v],average,sem, n, Shapiro ))
     }
   } 
 }
-names(StatsData) <- c("Genotype","Leaf","Variable", "Mean", "SEM", "N", "ShapiroTest", "Whitney-Mann")
+names(StatsData) <- c("Genotype","Leaf","Variable", "Mean", "SEM", "N", "ShapiroTest")
 write.csv(StatsData, paste(paste(unique(SummaryData$Date),collapse="."),"-basicStats.csv",sep = "" ) )
 
 
@@ -807,14 +794,14 @@ write.csv(StatsData, paste(paste(unique(SummaryData$Date),collapse="."),"-basicS
 My_Theme =  theme(
   axis.text.x = element_text(color = "black", size = 20, angle = 0, hjust = 0.5, vjust = 0, face = "plain"),
   axis.text.y = element_text(color = "black", size = 20, angle = 0, hjust = 0 , vjust = 0.5, face = "plain"),
-  axis.title.x = element_blank(), #element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), #
+  axis.title.x = element_blank(), 
   axis.title.y = element_text(color = "black", size = 25, angle = 90, hjust = 0.5, vjust = 1, face = "plain"),
-  plot.title = element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), # element_blank(), 
+  plot.title = element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), 
   legend.text = element_text(size = 20),
   legend.title = element_text(hjust = 0.1, size = 20),
   panel.grid.major.y = element_blank(),
   panel.grid.minor.y = element_blank(),
-  panel.grid.major.x = element_blank(), #element_line()
+  panel.grid.major.x = element_blank(), 
   panel.grid.minor.x = element_blank()) 
 
 for( v in which( names(SummaryData)%in%Parameters ) ) {
@@ -826,29 +813,21 @@ for( v in which( names(SummaryData)%in%Parameters ) ) {
   }
   plotName = paste(paste(unique(SummaryData$Date),collapse="."), "-",
                    names(SummaryData)[v], sep = "")
-  
-  
   traceParamPlot <- ggplot(SummaryData, aes(`Genotype`, SummaryData[,v], color = `Leaf`)) +
   geom_violin() +
   geom_jitter(shape=16, position=position_dodge(1)) +
     
   geom_label(data = dplyr::filter(StatsData, Variable == names(SummaryData)[v]) ,
-             aes(label = `Whitney-Mann`, y = Inf), inherit.aes = TRUE, 
+             aes(label = `ShapiroTest`, y = Inf), inherit.aes = TRUE, 
              position=position_dodge(1), vjust = 1.5 ) +
-             #aes(x = `Genotype`, y = 1, label = `Whitney-Mann`,  color = `Leaf`) ) +
-    
+
   ylab (units) + 
-  #xlab ("Time (s)") + 
-  #labs(color = "Leaf") +
   ggtitle(plotName) +
   My_Theme
   print(traceParamPlot)
-  
   ggsave(paste(plotName,".pdf",sep=""),traceParamPlot )
   Sys.sleep(0.2)
 }
-
-
 
 setwd(home)
 print(" Continue with step 4.2")
