@@ -1,7 +1,7 @@
 ---
 title: "SWPanalyzer"
 output: html_document
-date: "2023-02-17"
+date: "2024.07.18"
 editor_options: Code developed by Juan Camilo Barbosa-Caro. Team signaling @ Frommer Lab. Düsseldorf-Germany.
   chunk_output_type: console
 ---
@@ -14,26 +14,38 @@ knitr::opts_chunk$set(echo = TRUE)
         
 This script helps you to manipulate and analyze raw data from electrophysiological recordings of plants made with the software LabScribe. It analyzes SWP traces and determines different parameters on which statistics can be run. These parameters are:
 
+Paremeters calculated at:
 
-  hyperpol.amplitude1 - Hyperpolarization amplitude from first baseline to peak hyperpol 
-  depol.amplitude     - Depolarization amplitude from peak hyperpol to peak depol.
-  repol.amplitude     - Repolarization amplitude from second baseline to peak repolarization.
-  max.hyperpol.rate   - Max peak of hyperpolarizing slope.
-  min.depol.rate      - Minimum peak of slope in the depolarization phase.
-  max.hyperpol.rate   - Maximum peak of slope in the first hyperpol phase.
-  bl2                 - Final baseline after SWP is finished
-  depDur              - Time between the following two time points: 
-                        I) @ time of min.depol.rate
-                        II) @ time of middle voltage between peak repolarization and peak depolarization
-  hyperpol.duration   - Duration of first hyperpolarization from time @ max.hyperpol.rate to time @ min.depol.rate.
+Hyperpolarization phase
+  hyperpol.slope          - Maximum peak of slope in the first hyperpol phase.  
+  hyperpol.amplitude      - Hyperpolarization amplitude from first baseline to peak hyperpol 
+  hyperpol.duration       - Duration of first hyperpolarization from time @ hyperpol.slope to time @ 
+  
+Depolarization phase
+  depol.slope             - Minimum peak of slope in the depolarization phase.
+  depol.amplitude         - Depolarization amplitude from peak hyperpol to peak depol.
+  depol.duration          - Time between the following two time points: 
+                              I) @ time of depol.slope
+                              II) @ time of middle voltage between peak repolarization and peak
+
+Repolarization phase                            
+  hyperpol.2nd.amplitude  - Repolarization amplitude from second baseline to peak repolarization.
+  bl.2nd                  - Final baseline after SWP is finished
+
+  
   
     
     INPUT:
- .txt files in a folder with the following structure.
-Data for one experiment of recordings regardless of the amount of genotypes analyzed. All the traces from plants that grew together and were recorded together are considered to be one experiment.
+Data for one experiment (one day of recordings) regardless of the amount of genotypes analyzed. All the traces from plants that grew together and were recorded together are considered to be one experiment.
+With this labScribe software and hardware up to 4 electrodes can be used simultaneously. Hence, 2 plants per file. Either 1 or 2 plants can be analyzed here, make sure to follow this labeling rules for that.
+    
+    
+A folder with .txt files with the following structure:
+ - Folder named with the date in this structure: "YYMMDD"
+ - Raw data should be in .txt files, as exported from LabScribe,
 
-This raw data should be in .txt files, as exported from LabScribe, and contained in one or multiple "YYMMDD" folder(s). 
-          Data about the experiment is extracted from the leaf 8 column name. So the columns that correspond to the electrodes in the original .txt file NEED to be named in the following structure for the code to manipulate it:
+Name the data when recording with labScribe with the following structure
+Write all the information about the experiment in the leaf 8 label. Follow this structure for the names of the columns in the .txt file.
         Leaf 8 --         "Ez_Ly.xPG_w" 
         Leaf 13--         "Ez_Ly.x"
         Empty Electrode-- "Ez_Leer"
@@ -41,28 +53,25 @@ where:
                  z is the electrode number (1 to 4)
                  y is the leaf on which that electrode is (08 or 13)
                  x is the plant (1 or 2)
-                 PG stands for Plier and Gears as the stimulation device. GL as green light
+                 PG stands for Plyer and Gears as the stimulation device. GL as green light
                  w is the GENOTYPE (text of any length, just avoid "_") it has to be consistent for the system to compile them all together.
                  
-Example "E1_L08.1PG_Col0" 
-  is the electrode one on leaf 8 of plant 1, stimulated with PG, genotype is Col0
+Example "E1_L08.1PG_Col0" , "E2_L13.1", "E3_L13.2" , "E4_L08.2PG_mutant"
+This is 2 plants. 
+- Col-0 with electrodes 1 on leaf 8 and 2 on leaf 13 and
+- a mutant with electrodes 3 on leaf 13 and 2 on leaf 08
 
     OUTPUT:   
     each step yields an output.
-A folder with a name of choice inputed in step 2.1
-In this folder 
-  - a >genotype<->date< folder with all the traces corresponding to that combination. Each image is saved as the plant#.L##
-  - >genotype<.csv file with the raw data organized as a data frame to use with R or any other coding language.
-  - >genotype<Summary.csv file summarizing for every leaf of every plant all the parameters calculated. Each parameter is a column.
-  - >date<-basicStats.csv file with the Shapiro-Wilk normality test, the Mann-Whitney U test and the Kruskal-Wallis test for each parameter of each leaf of each genotype. Both non-parametric tests are compared to Col0 or any other group stated in step 2.1.
-  - >date-parameter<.pdf files. One for each parameter - violin plot with all the point separated by genotype and leaf.
-  - Mean->genotype-L##<.pdf files. One for each leaf of each genotype. The graphical mean of all traces ± SEM. 
+1. A folder with a name of choice inputed in step 2.1
+In this folder: 
+2.  a >genotype<->date< folder with all the traces corresponding to that combination. Each image is saved as the plant#.L##
+3.  >genotype<.csv file with the raw data organized as a data frame to use with R or any other coding language.
+4.  >genotype<Summary.csv file summarizing for every leaf of every plant all the parameters calculated. Each parameter is a column.
+5.  >date<-basicStats.csv file with the Shapiro-Wilk normality test, the Mann-Whitney U test and the Kruskal-Wallis test for each parameter of each leaf of each genotype. Both non-parametric tests are compared to Col0 or any other group stated in step 2.1. This is a guide, ABSOLUTELY re-run these tests, or other more suited to your data, manually with the data provided in point 4.
+6.  >date-parameter<.pdf files. One for each parameter - violin plot with all the point separated by genotype and leaf.
+7.  Mean->genotype-L##<.pdf files. One for each leaf of each genotype. The graphical mean of all traces ± SEM. 
 
-
-
-
-                                    BIASES
-Traces are filtered with a Savitzky-Golay method which reduces the amplitude (by around 5mV) of traces with a very sharp spike in the peak depolarization. If there is a phenotype at very sharp depol, we are probably missing it.
 
 
 
@@ -70,54 +79,71 @@ Traces are filtered with a Savitzky-Golay method which reduces the amplitude (by
 
 
                                   INSTRUCTIONS
-This script should run as an R project. This will create a folder that will be your "home" directory. In this home directory you put the raw files to be analyzed (see input above). 
-Along the process everything is saved in a folder that you will named in step 2.1, which will be created inside the home folder.
 
-First thing to do: Paste a copy of the exported folders with the data from one batch of experiments.
+Follow these steps:
+  1. Click on create a project on the top left of this window to create a new project. This will create a folder that will be your "home" directory. In this home directory you put the raw files to be analyzed . 
 
-The analysis is divided in 4 steps. Run them in order. There is a checkpoint between steps; this means that it is better if you don't close the program before finishing all the sub-steps (3.1,3.2,3.3) in a step (3).  
-If necessary to close the program and continue later, do it after finishing one full step. Remember to run step 1 every time you open the program, even if you are not starting from scratch.
+  2. In the gear instructions at the top of the window select "Chunk output in console" instead of "Chunk output inline". This will show all the steps of the process properly in the console.
+  
+  3. Paste a copy of the exported folders with the .txt data from one batch of experiments into the home folder you just created.
+  
+  4. Run the chunks in order (see below how to do that). If ran successfully, each chunk will indicate you to go to the next.
+  
+  Note: The analysis is divided in 4 sections, each with multiple chunks. Run them in order. 
+        There is a checkpoint between sections; this means that it is better if you don't close the program before finishing all the chunks of a section (3.1, 3.2, and 3.3 in 3). If necessary to close the program and continue later, do it after finishing one full section. REMEMBER to run section 1 every time you open the program, even if you are not starting from scratch.
 
-         Steps:
+         Analysis sections:
       1. Function and library loading (Run every time you start the program)
-      2. Load and convert the data.
-      3. Pick, trim and analyze summaryzed traces.
-      4. Plot and run statistics on calculated parameters.
-      
+      2. Load and convert the data
+      3. Pick, trim and analyze summaryzed traces
+      4. Plot and run statistics on calculated parameters
+      5. Plot a mean ±SEM trace for a genotype or group of traces
+
+
+                                
 Technical guidelines. 
   - For running a chunk click on the green arrow on the right.
-  - In the gear instructions at the top of the window select 
-"Chunk output in console" instead of "Chunk output inline". This will show all the steps of the process in the console properly.
   - For learning more about R notebooks check the following link.
 https://rmarkdown.rstudio.com/authoring_quick_tour.html
-///////////////////////////////////////////////////////////////////////////////
 
-## New things to do
-- include the duration of hyperpol peak in Parameters.
+                                   DISCLAIMER OF SCRIPT BIASES 
+Traces are filtered with a Savitzky-Golay method which reduces the amplitude (by around 5mV) of traces with a very sharp spike in the peak depolarization. If there is a phenotype at very sharp depolarization, we are probably missing it.
+
+
+
+
+
+
+
+
+/////////////////////////////////////////START HERE//////////////////////////////////////
    
-                                    
-# 1. Function and library loading
+   
+   
+                    
+# SECTION 1. Function and library loading
 
 - Run this chunk once every time you start the program.
 If you don't have the packages installed in your computer do it by typing in the console:
 install.packages("name of package")
-
-
 ```{r}
+# load packages
 library(ggplot2)
 library(tidyr)
 library(pracma)
 library(signal)
 library(dplyr)
 library(plotrix)
-Parameters = c("hyperpol.amplitude1", 
+Parameters = c("hyperpol.slope",
+               "hyperpol.amplitude",
+               "hyperpol.duration",
+               
+               "depol.slope",
                "depol.amplitude",
-               "min.depol.rate",
-               "max.hyperpol.rate",
-               "repol.amplitude", 
-               "bl2",
-               "depDur",
-               "hyperpol.duration")
+               "depol.duration",
+               
+               "hyperpol.2nd.amplitude", 
+               "bl.2nd" )
 # Function for parameter finding
 DataExtraction <- function(data, date){ 
   output <- list()
@@ -238,7 +264,7 @@ findSWPvalues <- function(trace, plant){
 
 
                         ### Initial baseline
-  bl = mean(trace[ 1:(stimFrame-2)]) # average from 0 to before stimFrame
+  bl.1st = mean(trace[ 1:(stimFrame-2)]) # average from 0 to before stimFrame
   
   
   
@@ -249,11 +275,11 @@ findSWPvalues <- function(trace, plant){
   
   
   
-                        ### hyperpol.amplitude1
+                        ### hyperpol.amplitude
   ### Find peak of first hyperpolarization between stimulus and depol peak
   maxHyperpol = max(  na.omit(trace[ (stimFrame-10) : depolFrame ])   )
   hyperpolFrame =  which(trace == maxHyperpol)# Find frame at maximum hyperpol
-  hyperpol.amplitude1 = maxHyperpol-bl
+  hyperpol.amplitude = maxHyperpol-bl.1st
   
   
   
@@ -269,10 +295,10 @@ findSWPvalues <- function(trace, plant){
   # focus on the chunk between max hyperpol an max depol
   depolTrace = trace[hyperpolFrame:depolFrame] #trace[ (stimFrame+10) : depolFrame  ]  
   depoltrace.firstderivative = calculateslope(depolTrace)
-  min.depol.rate =  min(depoltrace.firstderivative)
-  HalfDepolframe = min( which(depoltrace.firstderivative == min.depol.rate) )+hyperpolFrame-stimFrame
+  depol.slope =  min(depoltrace.firstderivative)
+  halfmax.depol.frame = min( which(depoltrace.firstderivative == depol.slope) )+hyperpolFrame-stimFrame
 # to find half max frame, substract the halfMax V from the trace and pick the closest to 0.
-  # HalfDepolframe = min (
+  # halfmax.depol.frame = min (
   #   which (  abs((depolTrace)-halfDepol ) == min( abs((depolTrace)-halfDepol))  )  ## Find the time at Halfdepol
   # ) #+ stimFrame 
   
@@ -282,56 +308,56 @@ findSWPvalues <- function(trace, plant){
   # focus on the chunk between max hyperpol an max depol
   hyperpolTrace = trace[(hyperpolFrame-20) : hyperpolFrame] # checks the trace 20s before the peak hyperpol.
   hyperpoltrace.firstderivative = calculateslope(hyperpolTrace)
-  max.hyperpol.rate = max(hyperpoltrace.firstderivative)
+  hyperpol.slope = max(hyperpoltrace.firstderivative)
   ### Save time of max slope
-  max.slope.frame = min( which(hyperpoltrace.firstderivative == max.hyperpol.rate) )+hyperpolFrame-20-stimFrame
+  depol.slope.frame = min( which(hyperpoltrace.firstderivative == hyperpol.slope) )+hyperpolFrame-20-stimFrame
   
                       ### hyperpol.duration from max hyperpol slope to min depol slope
   
-  hyperpol.duration = HalfDepolframe - max.slope.frame
+  hyperpol.duration = halfmax.depol.frame - depol.slope.frame
   
                           ### second baseline
   ### Find second baseline i.e. after repolarization
-  bl2 = mean(trace[   (length(trace)-60): length(trace)   ])
+  bl.2nd = mean(trace[   (length(trace)-60): length(trace)   ])
   
   
   
   
-                        ### repol.amplitude
+                        ### hyperpol.2nd.amplitude
     # focus on repolarization part of the trace
   repolTrace = trace[(depolFrame+1):length(trace)]
   maxRepol = max(repolTrace) # maximum repolarization
   maxRepolframe = which(repolTrace == maxRepol)+depolFrame
-  repol.amplitude = maxRepol-bl2 # Find hyperpolarization amplitude in the recovery phase
+  hyperpol.2nd.amplitude = maxRepol-bl.2nd # Find hyperpolarization amplitude in the recovery phase
   # former maxHyperpol2
   
   
                         ### maxRepol/2 frame
-  halfRepol = maxRepol + ((maxDepol-maxRepol)/2) # bl2 + (maxDepol - bl2)/2 # 
-  halfRepolframe =  max( which( abs(repolTrace-halfRepol) <= min(abs(repolTrace-halfRepol))+1 ) )   + depolFrame - stimFrame
+  halfRepol = maxRepol + ((maxDepol-maxRepol)/2) # bl.2nd + (maxDepol - bl.2nd)/2 # 
+  halfmax.repol.frame =  max( which( abs(repolTrace-halfRepol) <= min(abs(repolTrace-halfRepol))+1 ) )   + depolFrame - stimFrame
     
   
                             ### Depolarization duration
   #Time from halfmax raise and decay        
-  depDur = halfRepolframe - HalfDepolframe
+  depol.duration = halfmax.repol.frame - halfmax.depol.frame
   
   
   #return all these
   SWPvalues = data.frame(
-  bl,
+  bl.1st,
   maxDepol,
-  hyperpol.amplitude1,
-  max.hyperpol.rate,
-  max.slope.frame,
+  hyperpol.amplitude,
+  hyperpol.slope,
+  depol.slope.frame,
   maxHyperpol,
-  HalfDepolframe,
-  min.depol.rate,
+  halfmax.depol.frame,
+  depol.slope,
   depol.amplitude,
-  halfRepolframe,
+  halfmax.repol.frame,
   maxRepol, 
-  repol.amplitude,
-  bl2,
-  depDur,
+  hyperpol.2nd.amplitude,
+  bl.2nd,
+  depol.duration,
   hyperpol.duration,
   stimFrame
   )
@@ -421,14 +447,14 @@ plotAndAnalyze <- function(genotypeFile){
           plotTitle = paste(IDi,leafi, sep = ".")
           
             plot(x = trace$Seconds, y = trace$V, type = "l", main = plotTitle, ylim=c(-100,40) ) +
-            abline(h = SWPvalues$bl, col="black", lty = 2) +
-            abline(v = SWPvalues$HalfDepolframe, col="red") +
-            abline(v = SWPvalues$max.slope.frame, col="red") +
-            abline(v = SWPvalues$halfRepolframe, col="green") +
+            abline(h = SWPvalues$bl.1st, col="black", lty = 2) +
+            abline(v = SWPvalues$halfmax.depol.frame, col="red") +
+            abline(v = SWPvalues$depol.slope.frame, col="red") +
+            abline(v = SWPvalues$halfmax.repol.frame, col="green") +
             abline(h = SWPvalues$maxDepol, col = "red") +
             abline(h = SWPvalues$maxHyperpol, col = "blue") +
             abline(h = SWPvalues$maxRepol, col = "blue") +
-            abline(h = SWPvalues$bl2, col="green", lty = 2) +
+            abline(h = SWPvalues$bl.2nd, col="green", lty = 2) +
             abline(v = 0, col="black", lty = 2)
   
            
@@ -440,7 +466,7 @@ plotAndAnalyze <- function(genotypeFile){
           if(abs(SWPvalues$depol.amplitude) < 10){
             answer <- readline (prompt="NO RESPONSE! save as failed trace? [y];[n]    ")
             if(answer == "y"){
-              SWPvalues$depDur = NA
+              SWPvalues$depol.duration = NA
               plotTitle = paste("FAIL",plotTitle, sep = "-")
             }
           } else {
@@ -472,15 +498,15 @@ plotAndAnalyze <- function(genotypeFile){
               # save plot
               pdf(file = paste( savename,"-",datei,"/", plotTitle, ".pdf" , sep = "") )
               plot(x = trace$Seconds, y = trace$V, type = "l", main = plotTitle, ylim=c(-100,40)) +
-                abline(h = SWPvalues$bl, col="black", lty = 2) +
-                abline(v = SWPvalues$HalfDepolframe, col="red") +
-                abline(v = SWPvalues$max.slope.frame, col="red") +
+                abline(h = SWPvalues$bl.1st, col="black", lty = 2) +
+                abline(v = SWPvalues$halfmax.depol.frame, col="red") +
+                abline(v = SWPvalues$depol.slope.frame, col="red") +
                 
-                abline(v = SWPvalues$halfRepolframe, col="green") +
+                abline(v = SWPvalues$halfmax.repol.frame, col="green") +
                 abline(h = SWPvalues$maxDepol, col = "red") +
                 abline(h = SWPvalues$maxHyperpol, col = "blue") +
                 abline(h = SWPvalues$maxRepol, col = "blue") +
-                abline(h = SWPvalues$bl2, col="green", lty = 2) +
+                abline(h = SWPvalues$bl.2nd, col="green", lty = 2) +
                 abline(v = 0, col="black", lty = 2) 
               dev.off()
               
@@ -517,23 +543,25 @@ plotAndAnalyze <- function(genotypeFile){
 home = getwd()
 print("Continue with step 2.1 or where you left")
 ```
+
 ///////////////////////////////////////////////////////////////////////////////
 
 
 
 
 
-2. Convert the data from Labscribe into dataframe for analysis.
+# SECTION 2. Load and convert the data from Labscribe into dataframe for analysis.
 Create a folder with the name of your election. Here all the output will be saved.
 
-# 2.1. Write your folder's name in the foldername variable. 
+2.1. Write your folder's name in the foldername variable. 
      Wrire your control group in the controlgroup variable. This is the control condition Example. Col0 if the treatment is different genotypes   
                    Mannitol if the treatment is different drugs 
 
                              EDIT THE FOLDER NAME HERE
 ```{r}
 
-foldername = "tst"  # Replace the text in "" with the name you want your folder to have.
+foldername = "tst"  # Replace the text in "" with the name you want your folder to have. example: "Col-0-01.01.2000"
+
 # What is your control group?
 controlgroup = "Col0" #  "Col0.Mannitol1mM" #  
 #####
@@ -541,7 +569,7 @@ batchFolder = paste(home,foldername,sep="/")
 print("Continue with step 2.2") ###
 ```
 
-# 2.2. Run this to extract the data and save it in a folder with the name previously given. Ignore the errors that are shown at the end. This is due to the pedal (F1) marks in the traces. Check that you have the >genotype<.csv files in the folder that you created in the last step and continue with step 3.
+2.2. Run this to extract the data and save it in a folder with the name previously given. Ignore the errors that are shown at the end. This is due to the pedal (F1) marks in the traces. Check that you have the >genotype<.csv files in the folder that you created in the last step and continue with step 3.
 
 If this stops with an error instead of a success message, the file last printed does not have the proper formating. Check that column names fit the INPUT conditions above.
 
@@ -554,7 +582,8 @@ dir.create(batchFolder)
 
 # Loop through all the date-named folder containing the raw data. Saves and prints all the traces found.
 files = c()
-for (f in list.files()){
+done = 0
+for (f in list.files() ){
   
   ################ Check if it's a folder with content
   if( length(list.files(f)) != 0 ){ 
@@ -620,25 +649,32 @@ for (f in list.files()){
       # save i    
       write.csv(genotypeData, paste( batchFolder,"/",traceList[[p]]$Genotype[1],".csv",sep = "" ), row.names = FALSE )
       print(paste( f, i, traceList[[p]]$Genotype[1], traceList[[p]]$DayTime[1], sep = " - ") )
+      done = 1
     } # finish saving all traces "p" in file "i"
   } # finish opening all files in folder "f"
   
   setwd(home)
 }
-print("Success! continue with step 3.1")
+if(done == 1){
+ print("Success! continue with step 3.1") 
+} else {
+  print("No folder with .txt files recognized. Put data in home folder")
+}
+
 ```
+
 ///////////////////////////////////////////////////////////////////////////////
 
 
 
 
 
-3. Load the data
+# SECTION 3. Data processing
 Make sure you have the batch folder in the home directory, as created in step 2.2. 
 Also make sure to have written and run step 2.1 with the proper batch folder name.
 
  
-# 3.1. Check traces to be done
+3.1. Check traces to be done
 
 - Run to see how many and which traces you have to analyze.
 ```{r}
@@ -655,7 +691,7 @@ print("Continue with step 3.2")
 ```
 
 
-# 3.2. Pick and analyze traces
+3.2. Pick and analyze traces
 
 This function will show you a trace and ask you whether to 
   trim and save,  (input the second at which to trim, then ENTER)
@@ -664,15 +700,6 @@ This function will show you a trace and ask you whether to
   
 - Run as many times as required until the step 3.3 tells you are done. This should run through all traces in the ideal case, but will stop in case some trace is damaged. The easiest thing to do is to re-run this chunk and skip/erase the trace when the program first asks you what to do. 
 ```{r}
-### reset plot record of a file if needed ####
-
-# fileName = "almt5.3.csv"#names(pendingFiles[f])
-# genotypeData = read.csv( fileName )
-# genotypeData$Plot="No"
-# write.csv(genotypeData, fileName, row.names = FALSE )
-
-#####
-
 setwd(batchFolder)
 
 ## Function that loops through all the non-analyzed traces of the loaded 
@@ -685,7 +712,7 @@ for(f in names(pendingFiles)){
 }
 ```
 
-# 3.3.
+3.3.
 Check status of analysis
 ```{r}
 ## Update pending files.
@@ -703,14 +730,17 @@ if(length(pendingFiles) == 0){
 }
 setwd(home)
 ```
+
 ///////////////////////////////////////////////////////////////////////////////
 
 
 
 
-4. Plot and run statistics on data parameters.
 
-# 4.1.
+
+# SECTION 4. Plot and run statistics on data parameters.
+
+4.1.
 Plot and save one violin plot for each parameter quantified including all genotypes recorded.
 ```{r}
 setwd(batchFolder)
@@ -723,9 +753,12 @@ for( i in grep("Summary", list.files()) ){
 }
 
 
-# omit all the recordings clasified as fail. Those have depDur = NA
-failedtrace = which(is.na(SummaryData$depDur))
-SummaryData = SummaryData[-failedtrace,]
+# omit all the recordings clasified as fail. Those have depol.duration = NA
+failedtrace = which(is.na(SummaryData$depol.duration))
+if (length(failedtrace)>0 ){
+  SummaryData = SummaryData[-failedtrace,]
+}
+
 
 # find mean and SEM, shapiro test for each genotype
     # also
@@ -794,9 +827,9 @@ My_Theme =  theme(
 
 for( v in which( names(SummaryData)%in%Parameters ) ) {
   units = "Voltage (mV)"
-  if(names(SummaryData)[v]=="depDur"){
+  if(names(SummaryData)[v]=="depol.duration"){
     units = "Time (s)"
-  } else if ( names(SummaryData)[v]%in%c("min.depol.rate","max.hyperpol.rate") ){
+  } else if ( names(SummaryData)[v]%in%c("depol.slope","hyperpol.slope") ){
     units = "Slope(mV/s)"
   }
   plotName = paste(paste(unique(SummaryData$Date),collapse="."), "-",
@@ -829,10 +862,7 @@ setwd(home)
 print(" Continue with step 4.2")
 ```
 
-
-
-
-# 4.2.
+4.2.
 Plot the mean of all aligned traces chosen in the process above. Saves the plots as PDFs in the batch folder
 input - StatsData from step 4.1, >genotype<.csv files for genotypes in StatsData, SummaryData compiled from summary files in step 4.1
 output - average trace with SEM overlaid.
@@ -881,7 +911,7 @@ for(g in  unique(StatsData$Genotype)){
      
       stimFrame = SummaryData %>% 
         dplyr::filter(Date==mdate,id==mid,Leaf==mleaf, Genotype==g)%>%
-        summarise(stimFrame+HalfDepolframe) %>% as.numeric()
+        summarise(stimFrame+halfmax.depol.frame) %>% as.numeric()
           #print(stimFrame)
         # align to half max
       # Cut the trace 30s before half max and 270s after.
@@ -920,10 +950,15 @@ for(g in  unique(StatsData$Genotype)){
 setwd(home)
 print("Congrats! you are done. Start another batch or leave. You deserve it")
 ```
+
 ///////////////////////////////////////////////////////////////////////////////
 
 
-# 5 Plot mean after manual data selection
+
+
+
+
+# SECTION 5. Plot mean after manual data selection
 
 Plot the mean of all aligned traces of ONE genotype, CHOSEN BY HAND. 
 input - >genotype<.#.csv files. INPUT BY HAND THE DATES AND IDs.
