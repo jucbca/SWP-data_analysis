@@ -83,40 +83,6 @@ This is a guide, ABSOLUTELY re-run these tests, or other more suited to your dat
 
 
 
-
-
-
-
-                                  INSTRUCTIONS
-
-Follow these steps:
-  1. Click on create a project on the top left of this window to create a new project. 
-  This will create a folder that will be your "home" directory. 
-
-  2. In the "gear" button at the top of the window select "Chunk output in console" instead of "Chunk output inline". 
-  This will show all the steps of the process properly in the console.
-  
-  3. Paste a copy of the exported folders with the .txt data from one batch of experiments into the home folder you 
-  just created (use format described above in the INPUT section). 
-  
-  4. Run the chunks in order (see below how to do that). If ran successfully, each chunk will indicate you to go 
-  to the next.
-  
-  Note: The analysis is divided in 4 sections, each with multiple chunks. Run them in order. 
-        There is a checkpoint between sections; this means that it is better if you don't close the program before 
-        finishing all the chunks of a section (3.1, 3.2, and 3.3 in 3). If necessary to close the program and continue
-        later, do it after finishing one full section. REMEMBER to run section 1 every time you open the program, 
-        even if you are not starting from scratch.
-
-         Analysis sections:
-      1. Function and library loading (Run every time you start the program)
-      2. Load and convert the data
-      3. Pick, trim and analyze summaryzed traces
-      4. Plot and check for normality of calculated parameters. Also plot a mean ±SEM trace for a genotype or group of traces.
-      5. Plot a mean ±SEM trace for a genotype or group of traces picked manually of the pool previously generated.
-
-
-                                
 Technical guidelines. 
   - For running a chunk click on the green arrow on the right.
   - For learning more about R notebooks check the following link.
@@ -130,11 +96,39 @@ If there is a phenotype at very sharp depolarization, we are probably missing it
 
 
 
-
-
-
-
 ///////////////////////////////////////// START HERE //////////////////////////////////////
+
+
+                                  INSTRUCTIONS
+
+Follow these steps the first time you use this script:
+  1. Click on create a project on the top left of this window to create a new project. 
+  This will create a folder that will be your "home" directory. 
+
+  2. In the "gear" button at the top of the window select "Chunk output in console" instead of "Chunk output inline". 
+  This will show all the steps of the process properly in the console.
+  
+  3. Paste a copy of the exported folders with the .txt data from one batch of experiments into the home folder you 
+  just created (use format described above in the INPUT section). 
+  
+  4. Run the chunks in order (see below how to do that). If ran successfully, each chunk will indicate you to go 
+  to the next.
+  
+  Note: The analysis is divided in 4 sections, each with multiple chunks. Run them in order. 
+        There is a checkpoint between sections; this means that it if necessary to close the program and continue
+        later, do it after finishing one full section (3.1, 3.2, and 3.3 in 3).  
+        REMEMBER to run section 1 every time you open the program, even if you are not starting from scratch.
+
+         Analysis sections:
+      1. Function and library loading (Run every time you start the program)
+      2. Load and convert the data
+      3. Pick, trim and analyze summaryzed traces
+      4. Plot and check for normality of calculated parameters. Also plot a mean ±SEM trace for a genotype or group of traces.
+      5. Plot a mean ±SEM trace for a genotype or group of traces picked manually of the pool previously generated.
+
+
+
+///////////////////////////////////////// RUN HERE //////////////////////////////////////
    
    
    
