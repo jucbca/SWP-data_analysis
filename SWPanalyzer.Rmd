@@ -13,7 +13,7 @@ chunk_output_type: console
 
                                     DESCRIPTION 
         
-This script transforms and analyzes raw data from electrophysiological recordings of wounded Arabidopsis leafs, which generates signals known as Slow Wave Potential (SWP) [a](https://www.nature.com/articles/nature12478)  . It is designed to manage SWPs recorded with the software LabScribe. The wounding moment has to be marked with the F1 key. 
+This script transforms and analyzes raw data from electrophysiological recordings of wounded Arabidopsis leafs, which generates signals known as Slow Wave Potential (SWP) (https://www.nature.com/articles/nature12478)  . It is designed to manage SWPs recorded with the software LabScribe. The wounding moment has to be marked with the F1 key. 
 Different parameters are quantified from wounded and receiving leaf.
 
 Paremeters calculated at:
