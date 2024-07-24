@@ -54,14 +54,14 @@ A folder with .txt files with the following structure:
 Name the data when recording with labScribe with the following structure
 Write all the information about the experiment in the leaf 8 label. 
 Follow this structure for the names of the columns in the .txt file.
-        Leaf 8 --         "Ez_Ly.xPG_w" 
-        Leaf 13--         "Ez_Ly.x"
+        Leaf 8 --         "Ez_Lyy.xPG_w" 
+        Leaf 13--         "Ez_Lyy.x"
         Empty Electrode-- "Ez_Leer"
 where:
                  z is the electrode number (1 to 4)
                  y is the leaf on which that electrode is (08 or 13)
                  x is the plant (1 or 2)
-                 PG stands for Plyer and Gears as the stimulation device. GL as green light
+                 PG stands for Plyer and Gears as the stimulation device.
                  w is the GENOTYPE (text of any length, just avoid "_") it has to be consistent for the system to compile them all together.
                  
 Example "E1_L08.1PG_Col0" , "E2_L13.1", "E3_L13.2" , "E4_L08.2PG_mutant"
@@ -572,7 +572,8 @@ print("Continue with step 2.1 or where you left")
 Create a folder with the name of your election. Here all the output will be saved.
 
 2.1. Write your folder's name in the foldername variable. 
-     Wrire your control group in the controlgroup variable. This is the control condition Example. Col0 if the treatment is different genotypes   
+     Wrire your control group in the controlgroup variable. This is the control condition Example. 
+     Col0 if the treatment is different genotypes   
 
                              EDIT THE FOLDER NAME HERE
 ```{r}
@@ -721,10 +722,16 @@ This function will show you a trace and ask you whether to
   to only save    (just press enter) or
   to erase        (input n, then ENTER)
   
-- Run as many times as required until the step 3.3 tells you are done. This should run through all traces in the ideal case, but will stop in case some trace is damaged. The easiest thing to do is to re-run this chunk and skip/erase the trace when the program first asks you what to do. 
+- Run as many times as required until the step 3.3 tells you are done. 
+This should run through all traces in the ideal case, but will stop in case some trace is damaged. 
+The easiest thing to do is to re-run this chunk and skip/erase the trace when the program first asks you what to do. 
 
-output - a >genotype< folder with figures of the analyzed traces for both leaves available. 
-Figures names are #.Lxx.pdf, where xx is the leaf (08 or 13). # is the plant number, unique in the batch and consistent over all files generated. This allows tracking back to the original plant and trace.
+output - 
+  a >genotype< folder with figures of the analyzed traces for both leaves available. 
+  Figures names are "#.Lxx.pdf", where xx is the leaf (08 or 13). 
+   where: # is the plant number, unique in the batch and consistent over all files generated. 
+   This allows tracking back to the original plant and trace.
+  a ">genotype<Summary.csv" file with the value of all parameters calculated from all leaves of all plants.
 ```{r}
 setwd(batchFolder)
 
@@ -771,7 +778,8 @@ setwd(home)
 4.1.
 Plot and save one violin plot for each parameter quantified including all genotypes recorded.
 
-output - Violin plots for each parameter, a "yymmdd-basicStats.csv" file with all the values mean, SEM and p-value of Shapiro-Wilk normality test. 
+output - Violin plots for each parameter, 
+          a "yymmdd-basicStats.csv" file with all the values mean, SEM and p-value of Shapiro-Wilk normality test. 
 ```{r}
 setwd(batchFolder)
 # Open all the "Summary" files in the folder.
@@ -864,7 +872,7 @@ print(" Continue with step 4.2")
 4.2.
 Plot the mean of all aligned traces chosen in the process above. Saves the plots as PDFs in the batch folder
 
-output - average trace with SEM overlaid.
+output - average trace with SEM overlaid for each genotype.
 ```{r}
 setwd(batchFolder)
 # Violin plot for each parameter calculated
