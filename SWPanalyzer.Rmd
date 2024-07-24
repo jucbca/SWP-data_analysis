@@ -1,18 +1,20 @@
 ---
 title: "SWPanalyzer"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 date: "2024.07.18"
-editor_options: Code developed by Juan Camilo Barbosa-Caro. Team signaling @ Frommer Lab. Düsseldorf-Germany.
-  chunk_output_type: console
+editor_options: "Code developed by Juan Camilo Barbosa-Caro. Team signaling @ Frommer
+  Lab. Düsseldorf-Germany."
+chunk_output_type: console
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
+///////////////////////////////////////// READ THIS //////////////////////////////////////
 
                                     DESCRIPTION 
         
-This script helps you to manipulate and analyze raw data from electrophysiological recordings of plants made with the software LabScribe. It analyzes SWP traces and determines different parameters on which statistics can be run. These parameters are:
+This script transforms and analyzes raw data from electrophysiological recordings of wounded Arabidopsis leafs, which generates signals known as Slow Wave Potential (SWP) [a](https://www.nature.com/articles/nature12478)  . It is designed to manage SWPs recorded with the software LabScribe. The wounding moment has to be marked with the F1 key. 
+Different parameters are quantified from wounded and receiving leaf.
 
 Paremeters calculated at:
 
@@ -95,8 +97,8 @@ Follow these steps:
       1. Function and library loading (Run every time you start the program)
       2. Load and convert the data
       3. Pick, trim and analyze summaryzed traces
-      4. Plot and run statistics on calculated parameters
-      5. Plot a mean ±SEM trace for a genotype or group of traces
+      4. Plot and check for normality of calculated parameters. Also plot a mean ±SEM trace for a genotype or group of traces.
+      5. Plot a mean ±SEM trace for a genotype or group of traces picked manually of the pool previously generated.
 
 
                                 
@@ -115,12 +117,12 @@ Traces are filtered with a Savitzky-Golay method which reduces the amplitude (by
 
 
 
-/////////////////////////////////////////START HERE//////////////////////////////////////
+///////////////////////////////////////// START HERE //////////////////////////////////////
    
    
    
                     
-# SECTION 1. Function and library loading
+# SECTION 1. Function and library loading >RUN EVERY TIME YOU OPEN RSTUDIO<
 
 - Run this chunk once every time you start the program.
 If you don't have the packages installed in your computer do it by typing in the console:
@@ -554,12 +556,11 @@ Create a folder with the name of your election. Here all the output will be save
 
 2.1. Write your folder's name in the foldername variable. 
      Wrire your control group in the controlgroup variable. This is the control condition Example. Col0 if the treatment is different genotypes   
-                   Mannitol if the treatment is different drugs 
 
                              EDIT THE FOLDER NAME HERE
 ```{r}
 
-foldername = "tst"  # Replace the text in "" with the name you want your folder to have. example: "Col-0-01.01.2000"
+foldername = "Output"  # Replace the text in "" with the name you want your folder to have. example: "Col-0-01.01.2000"
 
 # What is your control group?
 controlgroup = "Col0" #  "Col0.Mannitol1mM" #  
@@ -568,11 +569,15 @@ batchFolder = paste(home,foldername,sep="/")
 print("Continue with step 2.2") ###
 ```
 
-2.2. Run this to extract the data and save it in a folder with the name previously given. Ignore the errors that are shown at the end. This is due to the pedal (F1) marks in the traces. Check that you have the >genotype<.csv files in the folder that you created in the last step and continue with step 3.
+2.2. Run this to extract the data and save it in a folder with the name previously given. Ignore the errors that are shown at the end. This is due to the F1 marks in the traces. Check that you have the >genotype<.csv files in the folder that you created in the last step and continue with step 3.
 
-If this stops with an error instead of a success message, the file last printed does not have the proper formating. Check that column names fit the INPUT conditions above.
+If this stops with an error instead of a success message, the last file printed in the console does not have the proper formating. Check that column names fit the INPUT conditions above.
 
 If you run this chunk for a second time, make sure to erase the files created in the previous run. Otherwise your traces will be duplicated in the same file.
+
+output - a folder with the name stated in step 2.1. 
+         a ">genotype<.csv" file with all the data for each genotype
+         
 ```{r}
 ## Load file names
 setwd(home)
@@ -676,6 +681,8 @@ Also make sure to have written and run step 2.1 with the proper batch folder nam
 3.1. Check traces to be done
 
 - Run to see how many and which traces you have to analyze.
+
+output - Will show you in the console what files are there for analyzing.
 ```{r}
 ## Loop through the genotypes recorded in that batch
 files2analyze = list.files(batchFolder)[grep(".csv", list.files(batchFolder))]
@@ -698,6 +705,9 @@ This function will show you a trace and ask you whether to
   to erase        (input n, then ENTER)
   
 - Run as many times as required until the step 3.3 tells you are done. This should run through all traces in the ideal case, but will stop in case some trace is damaged. The easiest thing to do is to re-run this chunk and skip/erase the trace when the program first asks you what to do. 
+
+output - a >genotype< folder with figures of the analyzed traces for both leaves available. 
+Figures names are #.Lxx.pdf, where xx is the leaf (08 or 13). # is the plant number, unique in the batch and consistent over all files generated. This allows tracking back to the original plant and trace.
 ```{r}
 setwd(batchFolder)
 
@@ -713,6 +723,8 @@ for(f in names(pendingFiles)){
 
 3.3.
 Check status of analysis
+
+output - Tells you if you are done with all the traces or if you need to keep running step 3.2
 ```{r}
 ## Update pending files.
 setwd(batchFolder)
@@ -741,6 +753,8 @@ setwd(home)
 
 4.1.
 Plot and save one violin plot for each parameter quantified including all genotypes recorded.
+
+output - Violin plots for each parameter, a "yymmdd-basicStats.csv" file with all the values mean, SEM and p-value of Shapiro-Wilk normality test. 
 ```{r}
 setwd(batchFolder)
 # Open all the "Summary" files in the folder.
@@ -817,10 +831,7 @@ for( v in which( names(SummaryData)%in%Parameters ) ) {
   geom_violin() +
   geom_jitter(shape=16, position=position_dodge(1)) +
     
-  geom_label(data = dplyr::filter(StatsData, Variable == names(SummaryData)[v]) ,
-             aes(label = `ShapiroTest`, y = Inf), inherit.aes = TRUE, 
-             position=position_dodge(1), vjust = 1.5 ) +
-
+  scale_fill_discrete(labels = c("A", "D"))+
   ylab (units) + 
   ggtitle(plotName) +
   My_Theme
@@ -835,7 +846,7 @@ print(" Continue with step 4.2")
 
 4.2.
 Plot the mean of all aligned traces chosen in the process above. Saves the plots as PDFs in the batch folder
-input - StatsData from step 4.1, >genotype<.csv files for genotypes in StatsData, SummaryData compiled from summary files in step 4.1
+
 output - average trace with SEM overlaid.
 ```{r}
 setwd(batchFolder)
@@ -940,7 +951,7 @@ output - >genotype<_meanSEM.pdf trace with average trace and SEM overlaid.
 plot.ids = list( "230228" = c(1,3,4,5,7,8,9,10,11,14,15,16,17,18,19,20),
                  "231005" = c(2,3,6,7,8,9,10,13,14,15,16,18), #,12
                  "231121" = c(2,3,4,5,6,7,10,11,14)
-      )
+      ) # Out of the traces in the >genotype<.#.csv files, which do you want to plot in the average?
 genotype = "Col-0"
 
 #####
