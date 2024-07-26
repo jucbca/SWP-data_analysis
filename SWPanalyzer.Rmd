@@ -9,7 +9,7 @@ editor_options: "Code developed by Juan Camilo Barbosa-Caro. Team signaling @ Fr
 chunk_output_type: console
 ---
 
-///////////////////////////////////////// READ THIS //////////////////////////////////////
+//////////////////////////////// READ THIS //////////////////////////////////////
 
                                     DESCRIPTION 
         
@@ -96,7 +96,7 @@ If there is a phenotype at very sharp depolarization, we are probably missing it
 
 
 
-///////////////////////////////////////// START HERE //////////////////////////////////////
+////////////////////////////// START HERE //////////////////////////////////////
 
 
                                   INSTRUCTIONS
@@ -154,7 +154,7 @@ Parameters = c("hyperpol.slope",
                "depol.amplitude",
                "depol.duration",
                
-               "hyperpol.2nd.amplitude", 
+               "hyperpol.amplitude.2nd", 
                "bl.2nd" )
 # Function for parameter finding
 DataExtraction <- function(data, date){ 
@@ -575,7 +575,7 @@ Create a folder with the name of your election. Here all the output will be save
 foldername = "Output"  # Replace the text in "" with the name you want your folder to have. example: "Col-0-01.01.2000"
 
 # What is your control group?
-controlgroup = "Col0" #  "Col0.Mannitol1mM" #  
+controlgroup = "Col0" #  
 #####
 batchFolder = paste(home,foldername,sep="/")
 print("Continue with step 2.2") ###
