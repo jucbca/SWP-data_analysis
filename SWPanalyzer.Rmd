@@ -16,22 +16,22 @@ chunk_output_type: console
 This script transforms and analyzes raw data from electrophysiological recordings of wounded Arabidopsis leafs, 
 which generates signals known as Slow Wave Potential (SWP) (https://www.nature.com/articles/nature12478).
 It is designed to manage SWPs recorded with the software LabScribe. 
-The wounding moment has to be marked with the F1 key. 
+The wounding moment has to be marked with the F1 key. ??(more presice, we mark the beginning and ending of the wounding process)
 Different parameters are quantified from wounded and receiving leaf.
 
-Paremeters calculated at:
+Paremeters calculated at: (at oder are??)
 
 Hyperpolarization phase
-  hyperpol.slope          - Maximum peak of slope in the first hyperpol phase.  
-  hyperpol.amplitude      - Hyperpolarization amplitude from first baseline to peak hyperpol 
-  hyperpol.duration       - Duration of first hyperpolarization from time @ hyperpol.slope to time @ 
+  hyperpol.slope          - Maximum peak of slope in the first hyperpol phase  (can we call it maximum slope?) 
+  hyperpol.amplitude      - Hyperpolarization amplitude from first baseline to peak (of) hyperpol 
+  hyperpol.duration       - Duration of first hyperpolarization from time @ hyperpol.slope to time @ (???)
   
 Depolarization phase
-  depol.slope             - Minimum peak of slope in the depolarization phase.
-  depol.amplitude         - Depolarization amplitude from peak hyperpol to peak depol.
+  depol.slope             - Minimum peak of slope in the depolarization phase (I only know minimum and maximum slope, I know what you mean but is that the official term?)
+  depol.amplitude         - Depolarization amplitude from hyperpol peak to depol peak
   depol.duration          - Time between the following two time points: 
                               I) @ time of depol.slope
-                              II) @ time of middle voltage between peak repolarization and peak
+                              II) @ time of middle voltage between peak repolarization and peak (what do you mean here?)
 
 Repolarization phase                            
   hyperpol.amplitude.2nd  - Repolarization amplitude from second baseline to peak repolarization.
@@ -41,10 +41,10 @@ Repolarization phase
   
     
     INPUT:
-Data for one experiment (one day of recordings) regardless of the amount of genotypes analyzed. All the traces 
-from plants that grew together and were recorded together are considered to be one experiment.
+Data for one experiment (one day of recordings) regardless of the amount of genotypes analyzed. (This suggests that one experiment is only one day of reacordings, but it can be several days of recordings. What you say in the next sentence) All the traces 
+from plants that grew together and were recorded together are considered to be one experiment.  ( think this information can go into the manuscriptand does not need to be repeated again. What do you think?)
 With this labScribe software and hardware up to 4 electrodes can be used simultaneously. Hence, 2 plants per file. 
-Either 1 or 2 plants can be analyzed here, make sure to follow this labeling rules for that.
+Either 1 or 2 plants can be analyzed, make sure to follow this labeling rules.
     
     
 A folder with .txt files with the following structure:
