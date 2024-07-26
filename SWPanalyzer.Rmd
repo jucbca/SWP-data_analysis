@@ -34,7 +34,7 @@ Depolarization phase
                               II) @ time of middle voltage between peak repolarization and peak
 
 Repolarization phase                            
- hyperpol_2nd.amplitude  - Repolarization amplitude from second baseline to peak repolarization.
+  hyperpol.amplitude.2nd  - Repolarization amplitude from second baseline to peak repolarization.
   bl.2nd                  - Final baseline after SWP is finished
 
   
@@ -335,12 +335,12 @@ findSWPvalues <- function(trace, plant){
   
   
   
-                        ###hyperpol_2nd.amplitude
+                        ###hyperpol.amplitude.2nd
     # focus on repolarization part of the trace
   repolTrace = trace[(depolFrame+1):length(trace)]
   maxRepol = max(repolTrace) # maximum repolarization
   maxRepolframe = which(repolTrace == maxRepol)+depolFrame
-  hyperpol_2nd.amplitude = maxRepol-bl.2nd # Find hyperpolarization amplitude in the recovery phase
+  hyperpol.amplitude.2nd = maxRepol-bl.2nd # Find hyperpolarization amplitude in the recovery phase
   # former maxHyperpol2
   
   
@@ -367,7 +367,7 @@ findSWPvalues <- function(trace, plant){
   depol.amplitude,
   halfmax.repol.frame,
   maxRepol, 
-  hyperpol_2nd.amplitude,
+  hyperpol.amplitude.2nd,
   bl.2nd,
   depol.duration,
   hyperpol.duration,
