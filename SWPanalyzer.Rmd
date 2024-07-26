@@ -34,7 +34,7 @@ Depolarization phase
                               II) @ time of middle voltage between peak repolarization and peak (what do you mean here?)
 
 Repolarization phase                            
-  hyperpol.amplitude.2nd  - Repolarization amplitude from second baseline to peak repolarization.
+  hyperpol.amplitude.2nd  - Amplitude from second baseline to peak repolarization.
   bl.2nd                  - Final baseline after SWP is finished
 
   
@@ -47,13 +47,13 @@ With this labScribe software and hardware up to 4 electrodes can be used simulta
 Either 1 or 2 plants can be analyzed, make sure to follow this labeling rules.
     
     
-A folder with .txt files with the following structure:
- - Folder named with the date in this structure: "YYMMDD"
- - Raw data should be in .txt files, as exported from LabScribe,
+A folder with .txt files having the following structure:
+ - Folder named: "YYMMDD"
+ - Raw data should be in .txt files, as exported from LabScribe
 
-Name the data when recording with labScribe with the following structure
-Write all the information about the experiment in the leaf 8 label. 
-Follow this structure for the names of the columns in the .txt file.
+In LabScribe name the electrodes (= column name) used in the recording with the following structure.
+All the information about the experiment are in the leaf 8 label. 
+
         Leaf 8 --         "Ez_Lyy.xPG_w" 
         Leaf 13--         "Ez_Lyy.x"
         Empty Electrode-- "Ez_Leer"
@@ -63,11 +63,11 @@ where:
                  x is the plant (1 or 2)
                  PG stands for Plyer and Gears as the stimulation device.
                  w is the GENOTYPE (text of any length, just avoid "_") it has to be consistent for the system to compile them all together.
-                 
-Example "E1_L08.1PG_Col0" , "E2_L13.1", "E3_L13.2" , "E4_L08.2PG_mutant"
-This is 2 plants. 
-- Col-0 with electrodes 1 on leaf 8 and 2 on leaf 13 and
-- a mutant with electrodes 3 on leaf 13 and 2 on leaf 08
+
+Example for 2 plant recording "E1_L08.1PG_Col0" , "E2_L13.1", "E3_L13.2" , "E4_L08.2PG_mutant"
+
+- Col-0 with electrodes 1 on leaf 8 and 2 on leaf 13
+- mutant with electrodes 3 on leaf 13 and 2 on leaf 08
 
     OUTPUT:   
 1. A folder with a name of choice inputed in step 2.1
@@ -77,9 +77,9 @@ In this folder:
 4.  >genotype<Summary.csv file summarizing for every leaf of every plant all the parameters calculated. Each parameter is a column.
 5.  >date<-basicStats.csv file with the Shapiro-Wilk normality test, the Mann-Whitney U test and the Kruskal-Wallis test for 
 each parameter of each leaf of each genotype. Both non-parametric tests are compared to Col0 or any other group stated in step 2.1. 
-This is a guide, ABSOLUTELY re-run these tests, or other more suited to your data, manually with the data provided in point 4.
-6.  >date-parameter<.pdf files. One for each parameter - violin plot with all the point separated by genotype and leaf.
-7.  Mean->genotype-L##<.pdf files. One for each leaf of each genotype. The graphical mean of all traces ± SEM. 
+This is only a guide. ABSOLUTELY re-run these tests or use other more suited to your data manually with the data provided in point 4.
+6.  >date-parameter<.pdf files. Violin plot with all the point separated by genotype and leaf. One for each parameter.
+7.  Mean->genotype-L##<.pdf files. The graphical mean of all traces ± SEM. One for each leaf of each genotype. 
 
 
 
@@ -89,9 +89,9 @@ Technical guidelines.
 https://rmarkdown.rstudio.com/authoring_quick_tour.html
 
                                    DISCLAIMER OF SCRIPT BIASES 
-Traces are filtered with a Savitzky-Golay method which reduces the amplitude (by around 5mV) of traces 
+Traces are filtered with a Savitzky-Golay method which reduces the amplitude (by around 5 mV) of traces 
 with a very sharp spike in the peak depolarization. 
-If there is a phenotype at very sharp depolarization, we are probably missing it.
+If there is a phenotype at very sharp depolarization, we are probably missing it. (I would leave this out)
 
 
 
@@ -115,8 +115,8 @@ Follow these steps the first time you use this script:
   to the next.
   
   Note: The analysis is divided in 4 sections, each with multiple chunks. Run them in order. 
-        There is a checkpoint between sections; this means that it if necessary to close the program and continue
-        later, do it after finishing one full section (3.1, 3.2, and 3.3 in 3).  
+        There is a checkpoint between sections; this means that if necessary to close the program and continue
+        later, do it after finishing one full section (3.1, 3.2, and 3.3 in 3(??)).  
         REMEMBER to run section 1 every time you open the program, even if you are not starting from scratch.
 
          Analysis sections:
@@ -136,7 +136,7 @@ Follow these steps the first time you use this script:
 # SECTION 1. Function and library loading >RUN EVERY TIME YOU OPEN RSTUDIO<
 
 - Run this chunk once every time you start the program.
-If you don't have the packages installed in your computer do it by typing in the console:
+If you don't have the packages installed in your computer does it by typing in the console:
 install.packages("name of package")
 ```{r}
 # load packages
@@ -281,7 +281,7 @@ findSWPvalues <- function(trace, plant){
   
   
   ### Find peak depolarization
-  maxDepol = min(   na.omit( trace[ stimFrame:length(trace) ] )   ) # find peak depol. It's extracellular recording, so depol goes to negative
+  maxDepol = min(   na.omit( trace[ stimFrame:length(trace) ] )   ) # find peak depol. It's extracellular recording, so depol goes to negative (this information os not needed I guess)
   
   depolFrame = which(trace == maxDepol) # Find frame at maximum depol 
   
@@ -304,7 +304,7 @@ findSWPvalues <- function(trace, plant){
                         ### minDepolrate frame
 
   # find the peak slope at depol part of the trace
-  # focus on the chunk between max hyperpol an max depol
+  # focus on the chunk between max hyperpol and max depol
   depolTrace = trace[hyperpolFrame:depolFrame] #trace[ (stimFrame+10) : depolFrame  ]  
   depoltrace.firstderivative = calculateslope(depolTrace)
   depol.slope =  min(depoltrace.firstderivative)
@@ -317,7 +317,7 @@ findSWPvalues <- function(trace, plant){
   
   
                       ### max hyperpol rate
-  # focus on the chunk between max hyperpol an max depol
+  # focus on the chunk between max hyperpol and max depol
   hyperpolTrace = trace[(hyperpolFrame-20) : hyperpolFrame] # checks the trace 20s before the peak hyperpol.
   hyperpoltrace.firstderivative = calculateslope(hyperpolTrace)
   hyperpol.slope = max(hyperpoltrace.firstderivative)
@@ -385,7 +385,7 @@ trimTrace <-function(trace, second){
 plotAndAnalyze <- function(genotypeFile){
   # Load file newly
   ALLtraces = read.csv( genotypeFile )
-  # Load summary file if exists.
+  # Load summary file if exists
   if( file.exists( paste(savename,"Summary.csv",sep = "")) )  {
     fTraceSummary = read.csv( paste(savename,"Summary.csv",sep = "") )
   } else {
@@ -419,7 +419,7 @@ plotAndAnalyze <- function(genotypeFile){
           
           
           
-          # Trim or not
+          # Trim or not (I think it needs more explanation why we should trim traces)
           answer <- readline (prompt="Trim trace? Second+ENTER, just ENTER to skip trimming, or >n< for skipping & erasing trace  ")
           if(nchar(answer)>0){
             if(answer == "n"){
@@ -522,7 +522,7 @@ plotAndAnalyze <- function(genotypeFile){
                 abline(v = 0, col="black", lty = 2) 
               dev.off()
               
-              # update database of traces. label the plotted as plotted.
+              # update database of traces. label the plotted as plotted.(label the plots?)
               # Set plot status to YES
               ALLtraces$Plot[traceIndeces] = "Yes"
               write.csv(ALLtraces, paste(savename,".csv",sep = ""), row.names = FALSE)
@@ -563,7 +563,7 @@ print("Continue with step 2.1 or where you left")
 
 
 # SECTION 2. Load and convert the data from Labscribe into dataframe for analysis.
-Create a folder with the name of your election. Here all the output will be saved.
+Create a folder with the name of your (s)election. Here all the output will be saved.
 
 2.1. Write your folder's name in the foldername variable. 
      Wrire your control group in the controlgroup variable. This is the control condition Example. 
@@ -686,8 +686,8 @@ if(done == 1){
 
 
 # SECTION 3. Data processing
-Make sure you have the batch folder in the home directory, as created in step 2.2. 
-Also make sure to have written and run step 2.1 with the proper batch folder name.
+Make sure you have the batch folder in the home directory as created in step 2.2. 
+Also make sure to have written and run step 2.1 with the proper batch folder name. (??)
 
  
 3.1. Check traces to be done
@@ -716,14 +716,15 @@ This function will show you a trace and ask you whether to
   to only save    (just press enter) or
   to erase        (input n, then ENTER)
   
-- Run as many times as required until the step 3.3 tells you are done. 
+- Run as many times as required until the step 3.3 says you are done. 
 This should run through all traces in the ideal case, but will stop in case some trace is damaged. 
 The easiest thing to do is to re-run this chunk and skip/erase the trace when the program first asks you what to do. 
 
 output - 
   a >genotype< folder with figures of the analyzed traces for both leaves available. 
-  Figures names are "#.Lxx.pdf", where xx is the leaf (08 or 13). 
-   where: # is the plant number, unique in the batch and consistent over all files generated. 
+  Figures names are "#.Lxx.pdf", where:
+  - xx is the leaf (08 or 13).
+  - # is the plant number, unique in the batch and consistent over all files generated. 
    This allows tracking back to the original plant and trace.
   a ">genotype<Summary.csv" file with the value of all parameters calculated from all leaves of all plants.
 ```{r}
@@ -968,7 +969,7 @@ output - >genotype<_meanSEM.pdf trace with average trace and SEM overlaid.
 ```{r}
 # ENTER INFO HERE before running
 plot.ids = list( "230228" = c(1,3,4,5,7,8,9,10,11,14,15,16,17,18,19,20),
-                 "231005" = c(2,3,6,7,8,9,10,13,14,15,16,18), #,12
+                 "231005" = c(2,3,6,7,8,9,10,13,14,15,16,18),
                  "231121" = c(2,3,4,5,6,7,10,11,14)
       ) # Out of the traces in the >genotype<.#.csv files, which do you want to plot in the average?
 genotype = "Col-0"
