@@ -16,33 +16,32 @@ chunk_output_type: console
 This script transforms and analyzes raw data from electrophysiological recordings of wounded Arabidopsis leafs, 
 which generates signals known as Slow Wave Potential (SWP) (https://www.nature.com/articles/nature12478).
 It is designed to manage SWPs recorded with the software LabScribe. 
-The wounding moment has to be marked with the F1 key. ??(more presice, we mark the beginning and ending of the wounding process)
+The ending of the wounding event has to be marked with the F1 key.
 Different parameters are quantified from wounded and receiving leaf.
 
-Paremeters calculated at: (at oder are??)
+Paremeters calculated are: 
 
 Hyperpolarization phase
-  hyperpol.slope          - Maximum peak of slope in the first hyperpol phase  (can we call it maximum slope?) 
-  hyperpol.amplitude      - Hyperpolarization amplitude from first baseline to peak (of) hyperpol 
-  hyperpol.duration       - Duration of first hyperpolarization from time @ hyperpol.slope to time @ (???)
+  hyperpol.slope          - Maximum slope in the first hyperpol phase 
+  hyperpol.amplitude      - Hyperpolarization amplitude from first baseline to the peak of hyperpol 
+  hyperpol.duration       - Duration of first hyperpolarization from time @ hyperpol.slope to time @ depol.slope
   
 Depolarization phase
-  depol.slope             - Minimum peak of slope in the depolarization phase (I only know minimum and maximum slope, I know what you mean but is that the official term?)
+  depol.slope             - Maximum slope in the depolarization phase. This is a negative value. 
   depol.amplitude         - Depolarization amplitude from hyperpol peak to depol peak
   depol.duration          - Time between the following two time points: 
                               I) @ time of depol.slope
-                              II) @ time of middle voltage between peak repolarization and peak (what do you mean here?)
+                              II) @ time at half maximum voltage between peak depolarization and peak repolarization 
 
 Repolarization phase                            
-  hyperpol.amplitude.2nd  - Amplitude from second baseline to peak repolarization.
+  hyperpol.amplitude.2nd  - Amplitude from second baseline to peak repolarization
   bl.2nd                  - Final baseline after SWP is finished
 
   
   
     
     INPUT:
-Data for one experiment (one day of recordings) regardless of the amount of genotypes analyzed. (This suggests that one experiment is only one day of reacordings, but it can be several days of recordings. What you say in the next sentence) All the traces 
-from plants that grew together and were recorded together are considered to be one experiment.  ( think this information can go into the manuscriptand does not need to be repeated again. What do you think?)
+Data for one experiment regardless of the amount of genotypes analyzed.
 With this labScribe software and hardware up to 4 electrodes can be used simultaneously. Hence, 2 plants per file. 
 Either 1 or 2 plants can be analyzed, make sure to follow this labeling rules.
     
@@ -51,7 +50,7 @@ A folder with .txt files having the following structure:
  - Folder named: "YYMMDD"
  - Raw data should be in .txt files, as exported from LabScribe
 
-In LabScribe name the electrodes (= column name) used in the recording with the following structure.
+In LabScribe name the electrodes (= column name in the .txt file) used in the recording with the following structure.
 All the information about the experiment are in the leaf 8 label. 
 
         Leaf 8 --         "Ez_Lyy.xPG_w" 
@@ -91,7 +90,7 @@ https://rmarkdown.rstudio.com/authoring_quick_tour.html
                                    DISCLAIMER OF SCRIPT BIASES 
 Traces are filtered with a Savitzky-Golay method which reduces the amplitude (by around 5 mV) of traces 
 with a very sharp spike in the peak depolarization. 
-If there is a phenotype at very sharp depolarization, we are probably missing it. (I would leave this out)
+If a mutant has a phenotype within 5 mV range in the peak amplitude, it will be likely undermined by this quantification method.
 
 
 
@@ -116,7 +115,7 @@ Follow these steps the first time you use this script:
   
   Note: The analysis is divided in 4 sections, each with multiple chunks. Run them in order. 
         There is a checkpoint between sections; this means that if necessary to close the program and continue
-        later, do it after finishing one full section (3.1, 3.2, and 3.3 in 3(??)).  
+        later, do it after finishing one full section.  
         REMEMBER to run section 1 every time you open the program, even if you are not starting from scratch.
 
          Analysis sections:
@@ -310,9 +309,7 @@ findSWPvalues <- function(trace, plant){
   depol.slope =  min(depoltrace.firstderivative)
   halfmax.depol.frame = min( which(depoltrace.firstderivative == depol.slope) )+hyperpolFrame-stimFrame
 # to find half max frame, substract the halfMax V from the trace and pick the closest to 0.
-  # halfmax.depol.frame = min (
-  #   which (  abs((depolTrace)-halfDepol ) == min( abs((depolTrace)-halfDepol))  )  ## Find the time at Halfdepol
-  # ) #+ stimFrame 
+
   
   
   
@@ -563,7 +560,7 @@ print("Continue with step 2.1 or where you left")
 
 
 # SECTION 2. Load and convert the data from Labscribe into dataframe for analysis.
-Create a folder with the name of your (s)election. Here all the output will be saved.
+Create a folder with the name of your choice. Here all the output will be saved.
 
 2.1. Write your folder's name in the foldername variable. 
      Wrire your control group in the controlgroup variable. This is the control condition Example. 
@@ -583,7 +580,7 @@ print("Continue with step 2.2") ###
 
 2.2. Run this to extract the data and save it in a folder with the name previously given. Ignore the errors that are shown at the end. This is due to the F1 marks in the traces. Check that you have the >genotype<.csv files in the folder that you created in the last step and continue with step 3.
 
-If this stops with an error instead of a success message, the last file printed in the console does not have the proper formating. Check that column names fit the INPUT conditions above.
+If this stops with an error instead of a success message, the last file printed in the console does not have the proper formatting. Check that column names fit the INPUT conditions above.
 
 If you run this chunk for a second time, make sure to erase the files created in the previous run. Otherwise your traces will be duplicated in the same file.
 
@@ -687,7 +684,6 @@ if(done == 1){
 
 # SECTION 3. Data processing
 Make sure you have the batch folder in the home directory as created in step 2.2. 
-Also make sure to have written and run step 2.1 with the proper batch folder name. (??)
 
  
 3.1. Check traces to be done
@@ -914,7 +910,6 @@ for(g in  unique(StatsData$Genotype)){
       stimFrame = SummaryData %>% 
         dplyr::filter(Date==mdate,id==mid,Leaf==mleaf, Genotype==g)%>%
         summarise(stimFrame+halfmax.depol.frame) %>% as.numeric()
-          #print(stimFrame)
         # align to half max
       # Cut the trace 30s before half max and 270s after.
       vCol = data.frame(V = vCol$V[(stimFrame-30):(stimFrame+270)] )
@@ -941,7 +936,6 @@ for(g in  unique(StatsData$Genotype)){
       ylab ("mV") + 
       xlab ("Time (s)") + 
       ylim (-100,40) +
-        #labs(color = "Leaf") +
       ggtitle( paste(g,"-",l," n=",round(leafn)," mean±SEM", sep = "") ) +
       My_Theme
     Sys.sleep(2)
@@ -982,7 +976,6 @@ for( f in list.files()[grep(".csv",list.files())] ){
   data = rbind(data, read.csv(f))
 }
 
-# data = read.csv("MeanPlotData.csv")
 # pick only the traces stated in the list
 data.plot = data.frame()
 for( i in 1:length(names(plot.ids)) ){
@@ -1036,19 +1029,18 @@ ggplot(na.omit(meanOnly), aes(x = Seconds))+
   ylab ("mV") + 
   xlab ("Time (s)") + 
   ylim (-100,40) +
-    #labs(color = "Leaf") +
   ggtitle( paste(genotype,"_L13"," n=",n," mean±SEM", sep = "") ) +
   theme(
   axis.text.x = element_text(color = "black", size = 20, angle = 0, hjust = 0.5, vjust = 0, face = "plain"),
   axis.text.y = element_text(color = "black", size = 20, angle = 0, hjust = 0 , vjust = 0.5, face = "plain"),
-  axis.title.x = element_text(color = "black", size = 25, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), #element_blank(), #element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), #
+  axis.title.x = element_text(color = "black", size = 25, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), 
   axis.title.y = element_text(color = "black", size = 25, angle = 90, hjust = 0.5, vjust = 1, face = "plain"),
-  plot.title = element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), # element_blank(), 
+  plot.title = element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), 
   legend.text = element_text(size = 20),
   legend.title = element_text(hjust = 0.1, size = 20),
-  panel.grid.major.y = element_line(), # element_blank()
+  panel.grid.major.y = element_line(),
   panel.grid.minor.y = element_line(),
-  panel.grid.major.x = element_line(), #element_line()
+  panel.grid.major.x = element_line(), 
   panel.grid.minor.x = element_blank() )
 ggsave(paste(genotype,"_meanSEM.pdf",sep = ""))
     
