@@ -967,7 +967,7 @@ plot.ids = list( "230228" = c(1,3,4,5,7,8,9,10,11,14,15,16,17,18,19,20),
                  "231121" = c(2,3,4,5,6,7,10,11,14)
       ) # Out of the traces in the >genotype<.#.csv files, which do you want to plot in the average?
 genotype = "Col-0"
-
+leaf = "L13" # "L08"
 #####
 setwd(home)
 data = NULL
@@ -982,12 +982,12 @@ for( i in 1:length(names(plot.ids)) ){
   data.plot = rbind ( data.plot, 
                       dplyr::filter(data, Date %in% names(plot.ids)[i] & 
                       id %in% plot.ids[[i]] &
-                      Leaf == "L13") 
+                      Leaf == leaf) 
                       ) 
 }
 
 # determine time only first 300 seconds
-time = data.frame("Seconds"= c(0:599) )
+time = data.frame("Seconds"= c(0:590) )
 # transform and align the data structure 
 data.plot = data.plot %>% select(Seconds,V,Date,id) %>% unite(id, 3:4 ,sep="_")
 n = unique(data.plot$id) %>% length()
@@ -999,7 +999,7 @@ for(i in 1:length(unique(data.plot$id)) ){
   slope.i = calculateslope(vector.i)
   # plot(slope.i, type="l")
   align.point = which(slope.i == min(na.omit(slope.i)) )
-  vector.i = vector.i [(align.point-99):(align.point+500)]
+  vector.i = vector.i [(align.point-90):(align.point+500)]
     # put into matrix with the others
   meanPlot =  cbind( meanPlot, data.frame("new" =  vector.i ) ) 
   
@@ -1029,7 +1029,7 @@ ggplot(na.omit(meanOnly), aes(x = Seconds))+
   ylab ("mV") + 
   xlab ("Time (s)") + 
   ylim (-100,40) +
-  ggtitle( paste(genotype,"_L13"," n=",n," mean±SEM", sep = "") ) +
+  ggtitle( paste(genotype,"_",leaf," n=",n," mean±SEM", sep = "") ) +
   theme(
   axis.text.x = element_text(color = "black", size = 20, angle = 0, hjust = 0.5, vjust = 0, face = "plain"),
   axis.text.y = element_text(color = "black", size = 20, angle = 0, hjust = 0 , vjust = 0.5, face = "plain"),
