@@ -747,7 +747,7 @@ for(g in names(pendingFiles) ) {
   pendingFiles[[g]] =c( AmIDone( g ) ) 
 }
 if(length(pendingFiles) == 0){
-  print("You are done! continue to step 4")
+  print("You are done! continue to section 4")
   unlink("batchTraces.RData")
   
 } else {
