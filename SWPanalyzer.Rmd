@@ -9,7 +9,7 @@ editor_options: "Code developed by Juan Camilo Barbosa-Caro. Team signaling @ Fr
 chunk_output_type: console
 ---
 
-//////////////////////////////// READ THIS //////////////////////////////////////
+#//////////////////////////////// READ THIS //////////////////////////////////////
 
                                     DESCRIPTION 
         
@@ -95,25 +95,27 @@ If a mutant has a phenotype within 5 mV range in the peak amplitude, it will be 
 
 
 
-////////////////////////////// START HERE //////////////////////////////////////
+#////////////////////////////// START HERE //////////////////////////////////////
 
 
                                   INSTRUCTIONS
 
 Follow these steps the first time you use this script:
-  1. Click on create a project on the top left of this window to create a new project. 
-  This will create a folder that will be your "home" directory. 
+  1. Click on create a project on the top left of this window to create a new project. Select the the option "Create new Directory".
+  This will create a folder with a file with the same name, min that folder all the input and output will be located.
+  
+  This window will probably close and a new space will be created. Open this code again in that space.
 
-  2. In the "gear" button at the top of the window select "Chunk output in console" instead of "Chunk output inline". 
+  2. In the "gear" configurations button at the top of the window select "Chunk output in console" instead of "Chunk output inline". 
   This will show all the steps of the process properly in the console.
   
   3. Paste a copy of the exported folders with the .txt data from one batch of experiments into the home folder you 
   just created (use format described above in the INPUT section). 
   
-  4. Run the chunks in order (see below how to do that). If ran successfully, each chunk will indicate you to go 
+  4. Run the chunks one by one and in order (see below how to do that). If ran successfully, each chunk will indicate you to go 
   to the next.
   
-  Note: The analysis is divided in 4 sections, each with multiple chunks. Run them in order. 
+  Note: The analysis is divided in 4 sections, each with multiple chunks. Run them in order and one by one. 
         There is a checkpoint between sections; this means that if necessary to close the program and continue
         later, do it after finishing one full section.  
         REMEMBER to run section 1 every time you open the program, even if you are not starting from scratch.
@@ -504,6 +506,8 @@ plotAndAnalyze <- function(genotypeFile){
               }
               write.csv(fTraceSummary, paste(savename,"Summary.csv",sep = ""), row.names = FALSE)
               
+              
+        
               # save plot
               pdf(file = paste( savename,"-",datei,"/", plotTitle, ".pdf" , sep = "") )
               plot(x = trace$Seconds, y = trace$V, type = "l", main = plotTitle, ylim=c(-100,40)) +
@@ -560,7 +564,7 @@ print("Continue with step 2.1 or where you left")
 
 
 # SECTION 2. Load and convert the data from Labscribe into dataframe for analysis.
-Create a folder with the name of your choice. Here all the output will be saved.
+This chunk will create a folder with the name of your choice. Here all the output will be saved.
 
 2.1. Write your folder's name in the foldername variable. 
      Wrire your control group in the controlgroup variable. This is the control condition Example. 
@@ -569,7 +573,7 @@ Create a folder with the name of your choice. Here all the output will be saved.
                              EDIT THE FOLDER NAME HERE
 ```{r}
 
-foldername = "Output"  # Replace the text in "" with the name you want your folder to have. example: "Col-0-01.01.2000"
+foldername = "almt5.3,4-gk.sk-230209.13"  # Replace the text in "" with the name you want your folder to have. example: "Col-0-01.01.2000"
 
 # What is your control group?
 controlgroup = "Col0" #  
@@ -578,11 +582,11 @@ batchFolder = paste(home,foldername,sep="/")
 print("Continue with step 2.2") ###
 ```
 
-2.2. Run this to extract the data and save it in a folder with the name previously given. Ignore the errors that are shown at the end. This is due to the F1 marks in the traces. Check that you have the >genotype<.csv files in the folder that you created in the last step and continue with step 3.
+2.2. Run this to extract the data and save it in a folder with the name previously given. Ignore the errors that are shown at the end. This is due to the F1 marks in the traces. 
 
 If this stops with an error instead of a success message, the last file printed in the console does not have the proper formatting. Check that column names fit the INPUT conditions above.
 
-If you run this chunk for a second time, make sure to erase the files created in the previous run. Otherwise your traces will be duplicated in the same file.
+If you run this chunk for a second time, make sure to erase the "output" folder created in the previous run. Otherwise your traces will be duplicated in the same file.
 
 output - a folder with the name stated in step 2.1. 
          a ">genotype<.csv" file with all the data for each genotype
@@ -714,7 +718,7 @@ This function will show you a trace and ask you whether to
   
 - Run as many times as required until the step 3.3 says you are done. 
 This should run through all traces in the ideal case, but will stop in case some trace is damaged. 
-The easiest thing to do is to re-run this chunk and skip/erase the trace when the program first asks you what to do. 
+The easiest thing to do is to stop (press esc) when the parameters of a trace are totally off in the plot and trimming the last part does not help. Then re-run this chunk and skip/erase the trace when the program first asks you what to do. 
 
 output - 
   a >genotype< folder with figures of the analyzed traces for both leaves available. 
@@ -739,7 +743,7 @@ for(f in names(pendingFiles)){
 3.3.
 Check status of analysis
 
-output - Tells you if you are done with all the traces or if you need to keep running step 3.2
+output - Tells you if you are done with all the traces or if you need to keep running the previous step.
 ```{r}
 ## Update pending files.
 setwd(batchFolder)
@@ -826,7 +830,7 @@ My_Theme =  theme(
   axis.text.y = element_text(color = "black", size = 20, angle = 0, hjust = 0 , vjust = 0.5, face = "plain"),
   axis.title.x = element_blank(), 
   axis.title.y = element_text(color = "black", size = 25, angle = 90, hjust = 0.5, vjust = 1, face = "plain"),
-  plot.title = element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), 
+  plot.title = element_text(color = "black", size = 20, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), 
   legend.text = element_text(size = 20),
   legend.title = element_text(hjust = 0.1, size = 20),
   panel.grid.major.y = element_blank(),
@@ -846,13 +850,12 @@ for( v in which( names(SummaryData)%in%Parameters ) ) {
   traceParamPlot <- ggplot(SummaryData, aes(`Genotype`, SummaryData[,v], color = `Leaf`)) +
   geom_violin() +
   geom_jitter(shape=16, position=position_dodge(1)) +
-    
   scale_fill_discrete(labels = c("A", "D"))+
   ylab (units) + 
   ggtitle(plotName) +
   My_Theme
   print(traceParamPlot)
-  ggsave(paste(plotName,".pdf",sep=""),traceParamPlot )
+  ggsave(paste(plotName,".pdf",sep=""),traceParamPlot, width = 6, height = 5, dpi = 300 ) 
   Sys.sleep(0.2)
 }
 
@@ -872,7 +875,7 @@ My_Theme =  theme(
   axis.text.y = element_text(color = "black", size = 20, angle = 0, hjust = 0 , vjust = 0.5, face = "plain"),
   axis.title.x = element_text(color = "black", size = 25, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), #element_blank(), #element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), #
   axis.title.y = element_text(color = "black", size = 25, angle = 90, hjust = 0.5, vjust = 1, face = "plain"),
-  plot.title = element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), # element_blank(), 
+  plot.title = element_text(color = "black", size = 20, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), # element_blank(), 
   legend.text = element_text(size = 20),
   legend.title = element_text(hjust = 0.1, size = 20),
   panel.grid.major.y = element_line(), # element_blank()
@@ -883,7 +886,7 @@ My_Theme =  theme(
 
 # loop between genotypes
 
-for(g in  unique(StatsData$Genotype)){
+for(g in  unique(StatsData$Genotype) ){
   genotypeData <-  read.csv(paste(g,".csv",sep = "")) %>% unite("id",id,plant,Date,sep = "_")
 
   # Organize T-V1-V2...Vn
@@ -910,6 +913,9 @@ for(g in  unique(StatsData$Genotype)){
       stimFrame = SummaryData %>% 
         dplyr::filter(Date==mdate,id==mid,Leaf==mleaf, Genotype==g)%>%
         summarise(stimFrame+halfmax.depol.frame) %>% as.numeric()
+      if( is.na(stimFrame) == TRUE ){
+        next
+      }
         # align to half max
       # Cut the trace 30s before half max and 270s after.
       vCol = data.frame(V = vCol$V[(stimFrame-30):(stimFrame+270)] )
@@ -938,9 +944,8 @@ for(g in  unique(StatsData$Genotype)){
       ylim (-100,40) +
       ggtitle( paste(g,"-",l," n=",round(leafn)," mean±SEM", sep = "") ) +
       My_Theme
-    Sys.sleep(2)
     print(mplot)
-    ggsave( paste("Mean-",g,"-",l,".pdf",sep = ""), mplot )
+    ggsave( paste("Mean-",g,"-",l,".pdf",sep = ""), mplot, width = 6, height = 5, dpi = 300  )
   }
 }
 setwd(home)
