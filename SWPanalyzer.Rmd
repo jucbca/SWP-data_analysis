@@ -510,7 +510,11 @@ plotAndAnalyze <- function(genotypeFile){
         
               # save plot
               pdf(file = paste( savename,"-",datei,"/", plotTitle, ".pdf" , sep = "") )
-              plot(x = trace$Seconds, y = trace$V, type = "l", main = plotTitle, ylim=c(-100,40)) +
+              plot(x = trace$Seconds, y = trace$V, type = "l", 
+                   main = plotTitle, 
+                   ylim=c(-100,40),
+                   xlab = "s", 
+                   ylab = "mV" ) +
                 abline(h = SWPvalues$bl.1st, col="black", lty = 2) +
                 abline(v = SWPvalues$halfmax.depol.frame, col="red") +
                 abline(v = SWPvalues$depol.slope.frame, col="red") +
@@ -520,7 +524,7 @@ plotAndAnalyze <- function(genotypeFile){
                 abline(h = SWPvalues$maxHyperpol, col = "blue") +
                 abline(h = SWPvalues$maxRepol, col = "blue") +
                 abline(h = SWPvalues$bl.2nd, col="green", lty = 2) +
-                abline(v = 0, col="black", lty = 2) 
+                abline(v = 0, col="black", lty = 2)
               dev.off()
               
               # update database of traces. label the plotted as plotted.(label the plots?)
@@ -573,7 +577,7 @@ This chunk will create a folder with the name of your choice. Here all the outpu
                              EDIT THE FOLDER NAME HERE
 ```{r}
 
-foldername = "almt5.3,4-gk.sk-230209.13"  # Replace the text in "" with the name you want your folder to have. example: "Col-0-01.01.2000"
+foldername = "Example-output"  # Replace the text in "" with the name you want your folder to have. example: "Col-0-01.01.2000"
 
 # What is your control group?
 controlgroup = "Col0" #  
@@ -840,7 +844,7 @@ My_Theme =  theme(
 
 for( v in which( names(SummaryData)%in%Parameters ) ) {
   units = "Voltage (mV)"
-  if(names(SummaryData)[v]=="depol.duration"){
+  if(names(SummaryData)[v]%in%c("depol.duration", "hyperpol.duration")){
     units = "Time (s)"
   } else if ( names(SummaryData)[v]%in%c("depol.slope","hyperpol.slope") ){
     units = "Slope(mV/s)"
