@@ -162,33 +162,59 @@ DataExtraction <- function(data, date){
   output <- list()
   time1 = data$Time
   ToD = data$TimeOfDay
-  #determine which have info
+  #determine which channels have info
 
-  if ( length( grep("L08",names(data)) ) == 1 ){
+  # is there a leaf 08?
+  L08.exist = length( grep("L08",names(data)) ) >= 1 
+  # is there a leaf 13?
+  L13.exist = length( grep("L13",names(data)) ) >= 1 
+  if( L08.exist == TRUE ) {
     PlantNumber = names(data)[grep("L08",names(data)) ] %>% substr(8,8) %>% as.numeric()
-  } else if ( length( grep("L08",names(data)) ) > 1 ){
-    PlantNumber = c(1,2)
+  } else if( L13.exist == TRUE ){
+    PlantNumber = names(data)[grep("L13",names(data)) ] %>% substr(8,8) %>% as.numeric()
   }
+  
   index = 1
   # Extract info one plant at a time.
-    for( n in PlantNumber){
+  for( n in PlantNumber){
+  # determine the leaf 1 or 2 identity (8, 13)
+    if( L08.exist == TRUE && L13.exist == FALSE ) {
+        leaf1 = paste("L08.", n, sep = "")
+        plant1 = data_frame("L08" = data[, grep(leaf1, names(data)) ])  # pick the columns w/ the data
+        info1 = names(data)[  grep(leaf1 , names(data))  ]
+    } else if( L08.exist == FALSE && L13.exist == TRUE ){ 
+        leaf1 = paste("L13.", n, sep = "")
+        plant1 = data_frame("L13" = data[, grep(leaf1, names(data)) ])  # pick the columns w/ the data
+        info1 = names(data)[  grep(leaf1 , names(data))  ]
+    } else if ( L08.exist == TRUE && L13.exist == TRUE ) {# if 
+        leaf1 = paste("L08.", n, sep = "")
+        leaf2 = paste("L13.", n, sep = "")
+        plant1 = data[, grep(leaf1, names(data)): grep(leaf2, names(data))] # pick the columns w/ the data
+        # extract info from L08 col (Stim,genotype)
+        # from cols 2,3 which have 08
+        info1 = names(data)[  grep( "08" , names(data) )  ]
+    }
 
-    leaf1 = paste("L08.", n, sep = "")
-    leaf2 = paste("L13.",n, sep = "")
-    plant1 = data[, grep(leaf1, names(data)): grep(leaf2, names(data))] # pick the columns w/ the data
-    # extract info from L08 col (Stim,genotype)
-    # from cols 2,3 which have 08
-    info1 = names(plant1)[   grep("08", names(plant1))   ]
+    
     # extract from that all necessary info
     stim1 = strsplit(info1,"_")[[1]][2] # separate by "_". save part with the stim. e.g. "L08.1CG"
     stim1 <- substr(stim1,6,nchar(stim1))
     genotype1 = strsplit(info1,"_")[[1]][3] # separate by "_". save part with the stim. e.g. "L08.1CG"
     # rename (Time, L08(V), L13)(V)) and tidy, and convert to numeric corresponding cols.
-    plant1 = cbind(time1,plant1)
+    plant1 <-  cbind( time1, plant1 )
     names(plant1)[1] <- "Seconds"
-    names(plant1)[   grep("08", names(plant1))   ] <- "L08"
-    names(plant1)[   grep("13", names(plant1))   ] <- "L13"
-    plant1 = gather(plant1, "Leaf", "V", 2:3)
+    if(L08.exist == TRUE ){
+      names(plant1)[   grep("08", names(plant1))   ] <- "L08"
+    } 
+    if(L13.exist == TRUE){
+      names(plant1)[   grep("13", names(plant1))   ] <- "L13"
+    }
+    if( ncol(plant1)>2 ){
+      plant1 = gather(plant1, "Leaf", "V", 2:3)
+    } else if( ncol(plant1)==2 ){
+      plant1 = gather(plant1, "Leaf", "V", 2:3)
+    }
+    
     plant1$plant = n
     plant1$Seconds = as.numeric(plant1$Seconds)
     plant1$`V` = as.numeric(plant1$`V`)*100
@@ -197,6 +223,11 @@ DataExtraction <- function(data, date){
     plant1$Date = date
     plant1$DayTime = ToD
     plant1$Plot = "No"
+    # get in F1 for the stimulation moment in case there are none
+    if( length(which(plant1$DayTime == "F1"))==0 ){
+      plant1$DayTime[which(plant1$Seconds==90)] = "F1"
+      plant1$V[which(plant1$Seconds==90)] = NaN
+    }
     
     plant1 = list(plant1)
     output <- append(output,plant1) 
@@ -577,7 +608,7 @@ This chunk will create a folder with the name of your choice. Here all the outpu
                              EDIT THE FOLDER NAME HERE
 ```{r}
 
-foldername = "Example-output"  # Replace the text in "" with the name you want your folder to have. example: "Col-0-01.01.2000"
+foldername = "output"  # Replace the text in "" with the name you want your folder to have. example: "Col-0-01.01.2000"
 
 # What is your control group?
 controlgroup = "Col0" #  
@@ -594,6 +625,15 @@ If you run this chunk for a second time, make sure to erase the "output" folder 
 
 output - a folder with the name stated in step 2.1. 
          a ">genotype<.csv" file with all the data for each genotype
+         
+         
+         
+         #### ACA VOY. Fix the missing F1 issue.
+         
+         
+         
+         
+         
          
 ```{r}
 ## Load file names
