@@ -201,18 +201,26 @@ DataExtraction <- function(data, date){
     stim1 <- substr(stim1,6,nchar(stim1))
     genotype1 = strsplit(info1,"_")[[1]][3] # separate by "_". save part with the stim. e.g. "L08.1CG"
     # rename (Time, L08(V), L13)(V)) and tidy, and convert to numeric corresponding cols.
-    plant1 <-  cbind( time1, plant1 )
-    names(plant1)[1] <- "Seconds"
+    plant1 <-  cbind( ToD, time1, plant1 )
+    names(plant1)[which(names(plant1)=="time1")] <- "Seconds"
+    names(plant1)[which(names(plant1)=="ToD")] <- "DayTime"
     if(L08.exist == TRUE ){
       names(plant1)[   grep("08", names(plant1))   ] <- "L08"
     } 
     if(L13.exist == TRUE){
       names(plant1)[   grep("13", names(plant1))   ] <- "L13"
     }
-    if( ncol(plant1)>2 ){
-      plant1 = gather(plant1, "Leaf", "V", 2:3)
-    } else if( ncol(plant1)==2 ){
-      plant1 = gather(plant1, "Leaf", "V", 2:3)
+    # remove initial part if there are to beginnings of the recording.
+    if( length(which(plant1$Seconds==0))>1 ){
+      print("t=0 identified twice in the recording. Took the second as start")
+      plant1 = plant1[max(which(plant1$Seconds==0)):nrow(plant1),]
+    }
+      
+      
+    if( ncol(plant1)>3 ){
+      plant1 = gather(plant1, "Leaf", "V", 3:4)
+    } else if( ncol(plant1)==3 ){
+      plant1 = gather(plant1, "Leaf", "V", 3)
     }
     
     plant1$plant = n
@@ -221,7 +229,6 @@ DataExtraction <- function(data, date){
     plant1$Genotype = genotype1
     plant1$Stim = stim1
     plant1$Date = date
-    plant1$DayTime = ToD
     plant1$Plot = "No"
     # get in F1 for the stimulation moment in case there are none
     if( length(which(plant1$DayTime == "F1"))==0 ){
@@ -265,34 +272,9 @@ calculateslope <- function(vector) {
   slopetrace = append(slopetrace, slopetrace[length(slopetrace)])
   return(slopetrace)
 }
-findSWPvalues <- function(trace, plant){
-  ### Set reference time 0 when stimulus is applied: either at the first F1 value or or at the first maximum value.
-  if(length( which( is.na(trace)) ) > 0 ){
-    stimFrames =   which( is.na(trace))
-    if( length( which( is.na(trace))) > 2 ) {
-      stimFrames =  which( is.na(trace))[c(1,3)]
-    }
-    # Pick the first NaN (or F1 in DayTime column) for plant 1, and the 3rd NaN for plant 2
-    if( plant == 1){
-      stimFrame = stimFrames[1] ### Determines the stimulus frame by finding the first NaN. Which is when the pedal is pressed.
-    }
-    if( plant == 2){
-      stimFrame =   stimFrames[length(stimFrames)]  ### Determines the -later- stimulus frame for plant 2
-    }
-    
-  } else {
-    stimFrames =  c(90,95) 
-    # Pick the first NaN (or F1 in DayTime column) for plant 1, and the 3rd NaN for plant 2
-    if( plant == 1){
-      stimFrame = stimFrames[1] ### Determines the stimulus frame by finding the first NaN. Which is when the pedal is pressed.
-    }
-    if( plant == 2){
-      stimFrame =   stimFrames[2]  ### Determines the -later- stimulus frame for plant 2
-    }
-  }
-  
-  
-  
+findSWPvalues <- function(trace, stimulus.time, sample.rate = 1){
+  ### Set reference time 0 when stimulus is applied: either at the first F1 value or or at the first maximum value. Determined as input of the function
+  stimFrame = stimulus.time*sample.rate 
   
   ### Filter signal
   trace[which(trace < -150)] = trace[1] # Make extreme values equal baseline. It's when the electrode looses contact.
@@ -318,19 +300,15 @@ findSWPvalues <- function(trace, plant){
   depolFrame = which(trace == maxDepol) # Find frame at maximum depol 
   
   
-  
                         ### hyperpol.amplitude
   ### Find peak of first hyperpolarization between stimulus and depol peak
-  maxHyperpol = max(  na.omit(trace[ (stimFrame-10) : depolFrame ])   )
-  hyperpolFrame =  which(trace == maxHyperpol)# Find frame at maximum hyperpol
+  maxHyperpol = max(  na.omit(trace[ (stimFrame) : depolFrame ])   )
+  hyperpolFrame =  which(trace == maxHyperpol) - stimFrame # Find frame at maximum hyperpol
   hyperpol.amplitude = maxHyperpol-bl.1st
-  
-  
-  
+
                         ### depol.amplitude
   depol.amplitude = maxDepol - abs(maxHyperpol) # Calculate max depol from the peak of hyperpol rather than from the initial baseline
-  
-  
+
   
   
                         ### minDepolrate frame
@@ -340,23 +318,31 @@ findSWPvalues <- function(trace, plant){
   depolTrace = trace[hyperpolFrame:depolFrame] #trace[ (stimFrame+10) : depolFrame  ]  
   depoltrace.firstderivative = calculateslope(depolTrace)
   depol.slope =  min(depoltrace.firstderivative)
-  halfmax.depol.frame = min( which(depoltrace.firstderivative == depol.slope) )+hyperpolFrame-stimFrame
+  depol.slope.frame = min( which(depoltrace.firstderivative == depol.slope) )+hyperpolFrame-stimFrame
+  
+  
 # to find half max frame, substract the halfMax V from the trace and pick the closest to 0.
-
+  halfmax.depol = round( maxHyperpol - (( abs(maxDepol)+abs(maxHyperpol) )/2), 2 )
+  halfmax.depol.frame = max( which( abs(depolTrace-halfmax.depol) <=
+                                      min(abs(depolTrace-halfmax.depol))+1 ) )   + 
+                        hyperpolFrame-stimFrame
   
   
-  
+   
                       ### max hyperpol rate
   # focus on the chunk between max hyperpol and max depol
-  hyperpolTrace = trace[(hyperpolFrame-20) : hyperpolFrame] # checks the trace 20s before the peak hyperpol.
+  check.behind = 20
+  hyperpolTrace = trace[ (hyperpolFrame-check.behind+stimFrame) : (hyperpolFrame+stimFrame+2)] # checks the trace 20s before the peak hyperpol.
   hyperpoltrace.firstderivative = calculateslope(hyperpolTrace)
   hyperpol.slope = max(hyperpoltrace.firstderivative)
   ### Save time of max slope
-  depol.slope.frame = min( which(hyperpoltrace.firstderivative == hyperpol.slope) )+hyperpolFrame-20-stimFrame
+  hyperpol.slope.frame = min( which(hyperpoltrace.firstderivative == hyperpol.slope) ) +
+                          hyperpolFrame-check.behind 
+  
   
                       ### hyperpol.duration from max hyperpol slope to min depol slope
   
-  hyperpol.duration = halfmax.depol.frame - depol.slope.frame
+  hyperpol.duration = depol.slope.frame - hyperpol.slope.frame
   
                           ### second baseline
   ### Find second baseline i.e. after repolarization
@@ -377,7 +363,6 @@ findSWPvalues <- function(trace, plant){
                         ### maxRepol/2 frame
   halfRepol = maxRepol + ((maxDepol-maxRepol)/2) # bl.2nd + (maxDepol - bl.2nd)/2 # 
   halfmax.repol.frame =  max( which( abs(repolTrace-halfRepol) <= min(abs(repolTrace-halfRepol))+1 ) )   + depolFrame - stimFrame
-    
   
                             ### Depolarization duration
   #Time from halfmax raise and decay        
@@ -389,12 +374,15 @@ findSWPvalues <- function(trace, plant){
   bl.1st,
   maxDepol,
   hyperpol.amplitude,
+  hyperpolFrame,
   hyperpol.slope,
+  hyperpol.slope.frame,
   depol.slope.frame,
   maxHyperpol,
   halfmax.depol.frame,
   depol.slope,
   depol.amplitude,
+  depolFrame,
   halfmax.repol.frame,
   maxRepol, 
   hyperpol.amplitude.2nd,
@@ -428,17 +416,17 @@ plotAndAnalyze <- function(genotypeFile){
   Leaf = c()
 #### filter to get to one single plant
   subSet0 = dplyr::filter(ALLtraces,Plot == "No") 
-  for (datei in unique(subSet0$Date)){ # pick one date
+  for (datei in unique(subSet0$Date) ){ # pick one date
     subSet1 = dplyr::filter(subSet0, Date == datei)
     # create folder if it doesn't exist
     if( dir.exists(paste( savename,"-",datei,sep = ""))==FALSE ){
       dir.create(paste( savename,"-",datei,sep = ""))
     }
-     for(stimi in unique(subSet1$Stim) ) { # pick one stimulus form
+     for( stimi in unique(subSet1$Stim) ) { # pick one stimulus form
       subSet2 = dplyr::filter(subSet1, Stim == stimi) 
-      for(IDi in unique(subSet2$id) ) { # pick one id
+      for( IDi in unique(subSet2$id) ) { # pick one id
         subSet3 = dplyr::filter(subSet2, id == IDi) 
-        for (leafi in unique(subSet3$Leaf) ){ # pick a leaf
+        for ( leafi in unique(subSet3$Leaf) ){ # pick a leaf
           # single trace to be analyzed
           trace = dplyr::filter(subSet3, Leaf == leafi)
           
@@ -446,7 +434,6 @@ plotAndAnalyze <- function(genotypeFile){
           
           
           plot(trace$V, type="l")
-          
           
           
           # Trim or not (I think it needs more explanation why we should trim traces)
@@ -476,7 +463,8 @@ plotAndAnalyze <- function(genotypeFile){
       
           
   ### FUNCTION TO CALCUATE PARAMETERS         
-          SWPanalysis = findSWPvalues(trace$V, trace$plant[1])
+          SWPanalysis = findSWPvalues(trace$V, 
+                                      trace$Seconds[ max(which(trace$DayTime=="F1"))] )
           trace = na.omit(trace)
           # Save trace and values independently
           trace$V = SWPanalysis[[1]]
@@ -490,7 +478,7 @@ plotAndAnalyze <- function(genotypeFile){
           
             plot(x = trace$Seconds, y = trace$V, type = "l", main = plotTitle, ylim=c(-100,40) ) +
             abline(h = SWPvalues$bl.1st, col="black", lty = 2) +
-            abline(v = SWPvalues$halfmax.depol.frame, col="red") +
+            abline(v = SWPvalues$hyperpol.slope.frame, col="red") +
             abline(v = SWPvalues$depol.slope.frame, col="red") +
             abline(v = SWPvalues$halfmax.repol.frame, col="green") +
             abline(h = SWPvalues$maxDepol, col = "red") +
@@ -547,7 +535,7 @@ plotAndAnalyze <- function(genotypeFile){
                    xlab = "s", 
                    ylab = "mV" ) +
                 abline(h = SWPvalues$bl.1st, col="black", lty = 2) +
-                abline(v = SWPvalues$halfmax.depol.frame, col="red") +
+                abline(v = SWPvalues$hyperpol.slope.frame, col="red") +
                 abline(v = SWPvalues$depol.slope.frame, col="red") +
                 
                 abline(v = SWPvalues$halfmax.repol.frame, col="green") +
@@ -625,15 +613,6 @@ If you run this chunk for a second time, make sure to erase the "output" folder 
 
 output - a folder with the name stated in step 2.1. 
          a ">genotype<.csv" file with all the data for each genotype
-         
-         
-         
-         #### ACA VOY. Fix the missing F1 issue.
-         
-         
-         
-         
-         
          
 ```{r}
 ## Load file names
