@@ -299,11 +299,11 @@ findSWPvalues <- function(trace, stimulus.time, sample.rate = 1){
   
   depolFrame = which(trace == maxDepol) # Find frame at maximum depol 
   
-  
+   
                         ### hyperpol.amplitude
   ### Find peak of first hyperpolarization between stimulus and depol peak
   maxHyperpol = max(  na.omit(trace[ (stimFrame) : depolFrame ])   )
-  hyperpolFrame =  which(trace == maxHyperpol) - stimFrame # Find frame at maximum hyperpol
+  hyperpolFrame =  which(trace == maxHyperpol) # Find frame at maximum hyperpol
   hyperpol.amplitude = maxHyperpol-bl.1st
 
                         ### depol.amplitude
@@ -318,27 +318,27 @@ findSWPvalues <- function(trace, stimulus.time, sample.rate = 1){
   depolTrace = trace[hyperpolFrame:depolFrame] #trace[ (stimFrame+10) : depolFrame  ]  
   depoltrace.firstderivative = calculateslope(depolTrace)
   depol.slope =  min(depoltrace.firstderivative)
-  depol.slope.frame = min( which(depoltrace.firstderivative == depol.slope) )+hyperpolFrame-stimFrame
+  depol.slope.frame = min( which(depoltrace.firstderivative == depol.slope) )+hyperpolFrame
   
+
   
 # to find half max frame, substract the halfMax V from the trace and pick the closest to 0.
   halfmax.depol = round( maxHyperpol - (( abs(maxDepol)+abs(maxHyperpol) )/2), 2 )
   halfmax.depol.frame = max( which( abs(depolTrace-halfmax.depol) <=
                                       min(abs(depolTrace-halfmax.depol))+1 ) )   + 
-                        hyperpolFrame-stimFrame
-  
+                        hyperpolFrame
   
    
                       ### max hyperpol rate
   # focus on the chunk between max hyperpol and max depol
   check.behind = 20
-  hyperpolTrace = trace[ (hyperpolFrame-check.behind+stimFrame) : (hyperpolFrame+stimFrame+2)] # checks the trace 20s before the peak hyperpol.
+  hyperpolTrace = trace[ (hyperpolFrame-check.behind) : (hyperpolFrame+2)] # checks the trace 20s before the peak hyperpol.
   hyperpoltrace.firstderivative = calculateslope(hyperpolTrace)
   hyperpol.slope = max(hyperpoltrace.firstderivative)
   ### Save time of max slope
   hyperpol.slope.frame = min( which(hyperpoltrace.firstderivative == hyperpol.slope) ) +
                           hyperpolFrame-check.behind 
-  
+
   
                       ### hyperpol.duration from max hyperpol slope to min depol slope
   
@@ -357,16 +357,24 @@ findSWPvalues <- function(trace, stimulus.time, sample.rate = 1){
   maxRepol = max(repolTrace) # maximum repolarization
   maxRepolframe = which(repolTrace == maxRepol)+depolFrame
   hyperpol.amplitude.2nd = maxRepol-bl.2nd # Find hyperpolarization amplitude in the recovery phase
-  # former maxHyperpol2
-  
-  
+
                         ### maxRepol/2 frame
   halfRepol = maxRepol + ((maxDepol-maxRepol)/2) # bl.2nd + (maxDepol - bl.2nd)/2 # 
-  halfmax.repol.frame =  max( which( abs(repolTrace-halfRepol) <= min(abs(repolTrace-halfRepol))+1 ) )   + depolFrame - stimFrame
-  
+  halfmax.repol.frame =  max( which( abs(repolTrace-halfRepol) <= min(abs(repolTrace-halfRepol))+1 ) )   + depolFrame
+
                             ### Depolarization duration
   #Time from halfmax raise and decay        
   depol.duration = halfmax.repol.frame - halfmax.depol.frame
+
+  
+  
+                            ### Change reference frame with the stimulus frame = 0
+  hyperpol.slope.frame = hyperpol.slope.frame - stimFrame
+  hyperpolFrame = hyperpolFrame  - stimFrame
+  depol.slope.frame = depol.slope.frame - stimFrame
+  halfmax.depol.frame = halfmax.depol.frame - stimFrame
+  depolFrame = depolFrame - stimFrame
+  halfmax.repol.frame = halfmax.repol.frame - stimFrame
   
   
   #return all these
@@ -414,7 +422,7 @@ plotAndAnalyze <- function(genotypeFile){
   Stim = c()
   id = c()
   Leaf = c()
-#### filter to get to one single plant
+#### filter to get to one single trace
   subSet0 = dplyr::filter(ALLtraces,Plot == "No") 
   for (datei in unique(subSet0$Date) ){ # pick one date
     subSet1 = dplyr::filter(subSet0, Date == datei)
@@ -638,18 +646,17 @@ for (f in list.files() ){
     print( paste(f,i,sep="_") )
     setwd(paste(home,f,sep = "/")) # go into folder with the files to extract
     traceList = DataExtraction( read.delim(i), f )# load .txt file returns list with all plants recorded in file.
-
     
     # Save traces to files. Sort by genotype -in another folder-
     for ( p in 1:length(traceList) ){ # loop through plants in list of traces
       setwd(batchFolder) # go to dir specific to that batch
       
       
+      
+      
     
       # if genotype file of plant "p" exists, open it
-      
-      
-      
+
       findFile = paste(traceList[[p]]$Genotype[1], ".csv", sep = "")
       if ( length( grep( findFile , list.files( ), fixed = TRUE)) == 1 ){ # looks for EXACT match of genotype.csv i.e., Col0 =! Col0.1
         genotypeData = read.csv( list.files(batchFolder)[ grep(findFile, list.files(batchFolder), fixed = TRUE )] )  
@@ -665,7 +672,8 @@ for (f in list.files() ){
         else if(length(grep(f, genotypeData$Date)) == 0){
           traceList[[p]]$id = 1
         } 
-       
+        # Uncomment if want to use name of the file (without extension) as id.
+        #traceList[[p]]$id = substr(i,1,nchar(i)-4) 
         genotypeData = rbind(genotypeData, traceList[[p]]) # append plant "p" to genotype database
       }
       
@@ -675,8 +683,11 @@ for (f in list.files() ){
       # else, no genotype file yet
       if ( length( grep( paste(traceList[[p]]$Genotype[1], ".csv", sep = ""), list.files( ), fixed = TRUE)) == 0 ){  # looks for EXACT match of genotype. i.e., Col0 =! Col0.1
         traceList[[p]]$id = 1
+              # Uncomment if want to use name of the file (without extension) as id.
+        #traceList[[p]]$id = substr(i,1,nchar(i)-4) 
         genotypeData = traceList[[p]] # create new file
       }
+
       
       
       # Down sample to 1Hz if the traces were saved in 10Hz
