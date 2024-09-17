@@ -297,13 +297,13 @@ findSWPvalues <- function(trace, stimulus.time, sample.rate = 1){
   ### Find peak depolarization
   maxDepol = min(   na.omit( trace[ stimFrame:length(trace) ] )   ) # find peak depol. It's extracellular recording, so depol goes to negative (this information os not needed I guess)
   
-  depolFrame = which(trace == maxDepol) # Find frame at maximum depol 
+  depolFrame = min(which(trace == maxDepol)) # Find frame at maximum depol 
   
    
                         ### hyperpol.amplitude
   ### Find peak of first hyperpolarization between stimulus and depol peak
   maxHyperpol = max(  na.omit(trace[ (stimFrame) : depolFrame ])   )
-  hyperpolFrame =  which(trace == maxHyperpol) # Find frame at maximum hyperpol
+  hyperpolFrame =  min(which(trace == maxHyperpol)) # Find frame at maximum hyperpol
   hyperpol.amplitude = maxHyperpol-bl.1st
 
                         ### depol.amplitude
@@ -360,7 +360,7 @@ findSWPvalues <- function(trace, stimulus.time, sample.rate = 1){
 
                         ### maxRepol/2 frame
   halfRepol = maxRepol + ((maxDepol-maxRepol)/2) # bl.2nd + (maxDepol - bl.2nd)/2 # 
-  halfmax.repol.frame =  max( which( abs(repolTrace-halfRepol) <= min(abs(repolTrace-halfRepol))+1 ) )   + depolFrame
+  halfmax.repol.frame =  min( which( abs(repolTrace-halfRepol) <= min(abs(repolTrace-halfRepol))+1 ) )   + depolFrame
 
                             ### Depolarization duration
   #Time from halfmax raise and decay        
@@ -472,7 +472,7 @@ plotAndAnalyze <- function(genotypeFile){
           
   ### FUNCTION TO CALCUATE PARAMETERS         
           SWPanalysis = findSWPvalues(trace$V, 
-                                      trace$Seconds[ max(which(trace$DayTime=="F1"))] )
+                                      trace$Seconds[ max(which(trace$DayTime=="F1"))+1] )
           trace = na.omit(trace)
           # Save trace and values independently
           trace$V = SWPanalysis[[1]]
