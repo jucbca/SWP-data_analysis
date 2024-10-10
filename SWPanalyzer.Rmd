@@ -192,7 +192,7 @@ DataExtraction <- function(data, date){
         plant1 = data[, grep(leaf1, names(data)): grep(leaf2, names(data))] # pick the columns w/ the data
         # extract info from L08 col (Stim,genotype)
         # from cols 2,3 which have 08
-        info1 = names(data)[  grep( "08" , names(data) )  ]
+        info1 = names(data)[  grep( paste("L08.", n, sep = ""), names(data) )  ]
     }
 
     
@@ -996,16 +996,16 @@ print("Congrats! you are done. Start another batch or leave. You deserve it")
 # SECTION 5. Plot mean after manual data selection
 
 Plot the mean of all aligned traces of ONE genotype, CHOSEN BY HAND. 
-input - >genotype<.#.csv files. INPUT BY HAND THE DATES AND IDs.
+input - >genotype<.csv files. INPUT BY HAND THE DATES AND IDs.
 output - >genotype<_meanSEM.pdf trace with average trace and SEM overlaid.
 ">genotype<_MeanPlotData.csv" with the raw data, mean and SEM.
 ```{r}
 # ENTER INFO HERE before running
-plot.ids = list( "230228" = c(1,3,4,5,7,8,9,10,11,14,15,16,17,18,19,20),
-                 "231005" = c(2,3,6,7,8,9,10,13,14,15,16,18),
-                 "231121" = c(2,3,4,5,6,7,10,11,14)
+plot.ids = list( "240819" = c(1),
+                 "240826" = c(2,3,4),
+                 "240829" = c(1)
       ) # Out of the traces in the >genotype<.#.csv files, which do you want to plot in the average?
-genotype = "Col-0"
+genotype = "mslD5" # something else? change here 
 leaf = "L13" # "L08"
 #####
 setwd(home)
