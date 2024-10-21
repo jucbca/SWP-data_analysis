@@ -360,7 +360,7 @@ findSWPvalues <- function(trace, stimulus.time, sample.rate = 1){
 
                         ### maxRepol/2 frame
   halfRepol = maxRepol + ((maxDepol-maxRepol)/2) # bl.2nd + (maxDepol - bl.2nd)/2 # 
-  halfmax.repol.frame =  min( which( abs(repolTrace-halfRepol) <= min(abs(repolTrace-halfRepol))+1 ) )   + depolFrame
+  halfmax.repol.frame =  max( which( abs(repolTrace-halfRepol) <= min(abs(repolTrace-halfRepol))+1 ) )   + depolFrame
 
                             ### Depolarization duration
   #Time from halfmax raise and decay        
@@ -598,7 +598,7 @@ print("Continue with step 2.1 or where you left")
 This chunk will create a folder with the name of your choice. Here all the output will be saved.
 
 2.1. Write your folder's name in the foldername variable. 
-     Wrire your control group in the controlgroup variable. This is the control condition Example. 
+     Write your control group in the controlgroup variable. This is the control condition Example. 
      Col0 if the treatment is different genotypes   
 
                              EDIT THE FOLDER NAME HERE
@@ -721,10 +721,25 @@ if(done == 1){
 
 
 # SECTION 3. Data processing
-Make sure you have the batch folder in the home directory as created in step 2.2. 
+Input-  ">genotype<.csv" files in the batch folder, in the home directory. As created in step 2.2. 
+
+READ THIS IF YOU WANT TO RUN THIS WHOLE SECTION A SECOND TIME.  Place only the ">genotype<.csv" files in the batch folder and reset them with this chunk.
+```{r}
+# Reset files to analyze again.
+setwd(batchFolder)
+files2analyze = list.files(batchFolder)[grep(".csv", list.files(batchFolder))]
+pendingFiles = list()
+setwd(batchFolder)
+for(g in files2analyze) {
+  file = read.csv(g)
+  file$Plot = "No"
+  write.csv(file, g, row.names = FALSE)
+}
+```
+
 
  
-3.1. Check traces to be done
+3.1. Register traces to be analyzed
 
 - Run to see how many and which traces you have to analyze.
 
@@ -741,6 +756,9 @@ save(pendingFiles, file="batchTraces.RData")
 setwd(home)
 print("Continue with step 3.2")
 ```
+
+
+
 
 
 3.2. Pick and analyze traces
@@ -860,11 +878,11 @@ write.csv(StatsData, paste(paste(unique(SummaryData$Date),collapse="."),"-basicS
 
 # Violin plot for each parameter calculated
 My_Theme =  theme(
-  axis.text.x = element_text(color = "black", size = 20, angle = 0, hjust = 0.5, vjust = 0, face = "plain"),
+  axis.text.x = element_text(color = "black", size = 10, angle = 0, hjust = 0.5, vjust = 0, face = "plain"),
   axis.text.y = element_text(color = "black", size = 20, angle = 0, hjust = 0 , vjust = 0.5, face = "plain"),
   axis.title.x = element_blank(), 
   axis.title.y = element_text(color = "black", size = 25, angle = 90, hjust = 0.5, vjust = 1, face = "plain"),
-  plot.title = element_text(color = "black", size = 20, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), 
+  plot.title = element_text(color = "black", size = 10, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), 
   legend.text = element_text(size = 20),
   legend.title = element_text(hjust = 0.1, size = 20),
   panel.grid.major.y = element_blank(),
