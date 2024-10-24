@@ -1,5 +1,5 @@
 # SWP-data_analysis
-This is a process for standardizing the phenotyping of wound-induced electric signals in Arabidopsis thaliana.
+This process standardizes the phenotyping of wound-induced electric signalin in Arabidopsis thaliana plants.
 
 The 3D printable parts (WoundingTeeth.stl) standardize the wounding stimulus, providing high response triggering ratio.
 
