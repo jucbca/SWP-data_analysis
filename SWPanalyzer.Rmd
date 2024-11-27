@@ -3,7 +3,7 @@ title: "SWPanalyzer"
 output:
   pdf_document: default
   html_document: default
-date: "2024.07.18"
+date: "2024.11.27"
 editor_options: "Code developed by Juan Camilo Barbosa-Caro. Team signaling @ Frommer
   Lab. Düsseldorf-Germany."
 chunk_output_type: console
@@ -81,12 +81,6 @@ This is only a guide. ABSOLUTELY re-run these tests or use other more suited to 
 7.  Mean->genotype-L##<.pdf files. The graphical mean of all traces ± SEM. One for each leaf of each genotype. 
 
 
-
-Technical guidelines. 
-  - For running a chunk click on the green arrow on the right.
-  - For learning more about R notebooks check the following link.
-https://rmarkdown.rstudio.com/authoring_quick_tour.html
-
                                    DISCLAIMER OF SCRIPT BIASES 
 Traces are filtered with a Savitzky-Golay method which reduces the amplitude (by around 5 mV) of traces 
 with a very sharp spike in the peak depolarization. 
@@ -96,29 +90,36 @@ If a mutant has a phenotype within 5 mV range in the peak amplitude, it will be 
 
 
 #////////////////////////////// START HERE //////////////////////////////////////
-
+If you struggle understanding these instructions, you might have a knowledge gap.
+Fill you knowledge gaps about R here:
+https://rmarkdown.rstudio.com/authoring_quick_tour.html
 
                                   INSTRUCTIONS
 
-Follow these steps the first time you use this script:
-  1. Click on create a project on the top left of this window to create a new project. Select the the option "Create new Directory".
-  This will create a folder with a file with the same name, min that folder all the input and output will be located.
+Follow these steps to use this script:
+
+  1. Carefully label and export your data from LabScribe. Double check that the name of the electrodes is in the required format (see INPUT section above)
+  IMPORTANT: when exporting include the "TimeOfDay" by ticking the box when the software asks. 
+  
+  2. Download and open this "SWPanalyzer.Rmd" file in Rstudio.
+  
+  3. Click on create a project on the top left of this window to create a new project. Select the the option "Create new Directory".
+  This will create a folder with a ".Rproj" file inside, both with the same name. In that folder all the input and output will be located.
   
   This window will probably close and a new space will be created. Open this code again in that space.
 
-  2. In the "gear" configurations button at the top of the window select "Chunk output in console" instead of "Chunk output inline". 
+  4. In the "gear" configurations button, at the top of the window where you are reading this instructions, select "Chunk output in console" instead of "Chunk output inline". 
   This will show all the steps of the process properly in the console.
   
-  3. Paste a copy of the exported folders with the .txt data from one batch of experiments into the home folder you 
-  just created (use format described above in the INPUT section). 
+  5. Paste a copy of the exported folders with the ".txt" data from one batch of experiments into the home folder you just created (use format described above in the INPUT section). 
   
-  4. Run the chunks one by one and in order (see below how to do that). If ran successfully, each chunk will indicate you to go 
-  to the next.
+  6. Run the chunks (click on the green arrow on the right) one by one and in order. 
+    If ran successfully, each chunk will indicate you to go to the next.
+  
   
   Note: The analysis is divided in 4 sections, each with multiple chunks. Run them in order and one by one. 
-        There is a checkpoint between sections; this means that if necessary to close the program and continue
-        later, do it after finishing one full section.  
-        REMEMBER to run section 1 every time you open the program, even if you are not starting from scratch.
+        There is a checkpoint between sections; this means that if necessary to close the program and continue later, do it after finishing one full section.  
+        REMEMBER! run section 1 every time you open the program, even if you are not starting from scratch.
 
          Analysis sections:
       1. Function and library loading (Run every time you start the program)
@@ -137,8 +138,9 @@ Follow these steps the first time you use this script:
 # SECTION 1. Function and library loading >RUN EVERY TIME YOU OPEN RSTUDIO<
 
 - Run this chunk once every time you start the program.
-If you don't have the packages installed in your computer does it by typing in the console:
-install.packages("name of package")
+You will get an ERROR if you don't have the packages installed in your computer does it by typing in the console:
+install.packages("name of package") 
+example: install.packages("ggplot2")
 ```{r}
 # load packages
 library(ggplot2)
