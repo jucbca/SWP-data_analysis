@@ -41,14 +41,14 @@ Repolarization phase
   
     
     INPUT:
-Data for one experiment regardless of the amount of genotypes analyzed.
+Data for one or multiple experiments regardless of the amount of genotypes screened.
 With this labScribe software and hardware up to 4 electrodes can be used simultaneously. Hence, 2 plants per file. 
 Either 1 or 2 plants can be analyzed, make sure to follow this labeling rules.
     
     
-A folder with .txt files having the following structure:
- - Folder named: "YYMMDD"
- - Raw data should be in .txt files, as exported from LabScribe
+One or multiple folders with .txt files having the following structure:
+ - Folder named: "YYMMDD". Note: You can simultaneously analyze as many folders as needed
+ - Raw data inside that folder should be in .txt files, as exported from LabScribe
 
 In LabScribe name the electrodes (= column name in the .txt file) used in the recording with the following structure.
 All the information about the experiment are in the leaf 8 label. 
@@ -111,7 +111,7 @@ Follow these steps to use this script:
   4. In the "gear" configurations button, at the top of the window where you are reading this instructions, select "Chunk output in console" instead of "Chunk output inline". 
   This will show all the steps of the process properly in the console.
   
-  5. Paste a copy of the exported folders with the ".txt" data from one batch of experiments into the home folder you just created (use format described above in the INPUT section). 
+  5. Paste a copy of the exported "yymmdd" folders with the ".txt" data from one batch of experiments into the home folder you just created (use format described above in the INPUT section). 
   
   6. Run the chunks (click on the green arrow on the right) one by one and in order. 
     If ran successfully, each chunk will indicate you to go to the next.
@@ -1046,7 +1046,7 @@ for( i in 1:length(names(plot.ids)) ){
 }
 
 # determine time only first 300 seconds
-time = data.frame("Seconds"= c(0:590) )
+time = data.frame("Seconds"= c(0:300) )
 # transform and align the data structure 
 data.plot = data.plot %>% select(Seconds,V,Date,id) %>% unite(id, 3:4 ,sep="_")
 n = unique(data.plot$id) %>% length()
@@ -1058,7 +1058,7 @@ for(i in 1:length(unique(data.plot$id)) ){
   slope.i = calculateslope(vector.i)
   # plot(slope.i, type="l")
   align.point = which(slope.i == min(na.omit(slope.i)) )
-  vector.i = vector.i [(align.point-90):(align.point+500)]
+  vector.i = vector.i [(align.point-30):(align.point+270)]
     # put into matrix with the others
   meanPlot =  cbind( meanPlot, data.frame("new" =  vector.i ) ) 
   
