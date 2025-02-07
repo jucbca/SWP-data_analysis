@@ -19,10 +19,14 @@ It is designed to manage SWPs recorded with the software LabScribe.
 The ending of the wounding event has to be marked by a F1 keypress.
 
 
-Different SWP parameters are quantified at the wounded and receiving leaf by a custom-made algorithm. Initially, the recorded voltage vector, at 1 Hz sample rate, is smoothed with a Savitzky-Golay filter, with a moving window of 3 points and a fitting polynomial of order 1. From that filtered signal the parameters are automatically calculated as follows:
+Different SWP parameters are quantified at the wounded and receiving leaf by a custom-made algorithm.
+Initially, the recorded voltage vector, at 1 Hz sample rate, is smoothed with a Savitzky-Golay filter, 
+with a moving window of 3 points and a fitting polynomial of order 1. 
+From that filtered signal the parameters are automatically calculated as follows:
 
 Reference parameters
-  - First baseline – average voltage from the beginning of the trace to the stimulus mark (marked by pressing F1 key during recording).
+  - First baseline – average voltage from the beginning of the trace to the stimulus mark
+  (marked by pressing F1 key during recording).
   -	depol.peak – minimum voltage of the complete trace.
   -	first.hyperpol.peak – maximum voltage between stimulus mark and depol.peak
   -	second.hyperpol.peak – maximum voltage between depol.peak and the recording end.
