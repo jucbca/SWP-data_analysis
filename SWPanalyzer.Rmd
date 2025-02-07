@@ -16,26 +16,30 @@ chunk_output_type: console
 This script transforms and analyzes raw data from electrophysiological recordings of wounded Arabidopsis leafs, 
 which generates signals known as Slow Wave Potential (SWP) (https://www.nature.com/articles/nature12478).
 It is designed to manage SWPs recorded with the software LabScribe. 
-The ending of the wounding event has to be marked with the F1 key.
-Different parameters are quantified from wounded and receiving leaf.
+The ending of the wounding event has to be marked by a F1 keypress.
 
-Paremeters calculated are: 
+
+Different SWP parameters are quantified at the wounded and receiving leaf by a custom-made algorithm. Initially, the recorded voltage vector, at 1 Hz sample rate, is smoothed with a Savitzky-Golay filter, with a moving window of 3 points and a fitting polynomial of order 1. From that filtered signal the parameters are automatically calculated as follows:
+
+Reference parameters
+  - First baseline – average voltage from the beginning of the trace to the stimulus mark (marked by pressing F1 key during recording).
+  -	depol.peak – minimum voltage of the complete trace.
+  -	first.hyperpol.peak – maximum voltage between stimulus mark and depol.peak
+  -	second.hyperpol.peak – maximum voltage between depol.peak and the recording end.
 
 Hyperpolarization phase
-  hyperpol.slope          - Maximum slope in the first hyperpol phase 
-  hyperpol.amplitude      - Hyperpolarization amplitude from first baseline to the peak of hyperpol 
-  hyperpol.duration       - Duration of first hyperpolarization from time @ hyperpol.slope to time @ depol.slope
-  
-Depolarization phase
-  depol.slope             - Maximum slope in the depolarization phase. This is a negative value. 
-  depol.amplitude         - Depolarization amplitude from hyperpol peak to depol peak
-  depol.duration          - Time between the following two time points: 
-                              I) @ time of depol.slope
-                              II) @ time at half maximum voltage between peak depolarization and peak repolarization 
+  -	hyperpol.amplitude – the voltage difference between the first baseline and the first.hyperpol.peak.
+  -	hyperpol.slope – the maximum point of the first derivative of the trace between the stimulus mark and the first.hyperpol.peak.
+  -	hyperpol.duration – Time difference between hyperpol.slope and depol.slope (see below).
 
-Repolarization phase                            
-  hyperpol.amplitude.2nd  - Amplitude from second baseline to peak repolarization
-  bl.2nd                  - Final baseline after SWP is finished
+Depolarization phase
+  -	depol.slope – minimum point of the first derivative of the trace between first.hyperpol.peak and depol.peak.
+  -	depol.amplitude – Voltage difference between first.hyperpol.peak and depol.peak.
+  -	depol.duration – time difference between the points where voltage equals (first.hyperpol.peak - depol.peak)/2 and (second.hyperpol.peak - depol.peak)/2.
+
+Repolarization phase
+  -	bl.2nd (second baseline) – average voltage in the final 60 s of the recording.
+  -	hyperpol.amplitude.2nd – voltage difference between second.hyperpol.peak and bl.2nd.
 
   
   
