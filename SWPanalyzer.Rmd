@@ -6,6 +6,7 @@ output:
 date: "2024.11.27"
 editor_options: "Code developed by Juan Camilo Barbosa-Caro. Team signaling @ Frommer
   Lab. Düsseldorf-Germany."
+  chunk_output_type: console
 chunk_output_type: console
 ---
 
@@ -617,7 +618,7 @@ This chunk will create a folder with the name of your choice. Here all the outpu
 foldername = "output"  # Replace the text in "" with the name you want your folder to have. example: "Col-0-01.01.2000"
 
 # What is your control group?
-controlgroup = "Col0" #  
+controlgroup = "Col.0" #  
 #####
 batchFolder = paste(home,foldername,sep="/")
 print("Continue with step 2.2") ###
@@ -625,8 +626,7 @@ print("Continue with step 2.2") ###
 
 2.2. Run this to extract the data and save it in a folder with the name previously given. Ignore the errors that are shown at the end. This is due to the F1 marks in the traces. 
 
-If this stops with an error instead of a success message, the last file printed in the console does not have the proper formatting. Check that column names fit the INPUT conditions above.
-
+Troubleshooting: If this stops with an error instead of a success message, the last file printed in the console does not have the proper formatting. Check that column names fit the INPUT conditions above.
 If you run this chunk for a second time, make sure to erase the "output" folder created in the previous run. Otherwise your traces will be duplicated in the same file.
 
 output - a folder with the name stated in step 2.1. 
@@ -888,7 +888,7 @@ write.csv(StatsData, paste(paste(unique(SummaryData$Date),collapse="."),"-basicS
 
 # Violin plot for each parameter calculated
 My_Theme =  theme(
-  axis.text.x = element_text(color = "black", size = 10, angle = 0, hjust = 0.5, vjust = 0, face = "plain"),
+  axis.text.x = element_text(color = "black", size = 10, angle = 300, hjust = 0, vjust = 1, face = "plain"),
   axis.text.y = element_text(color = "black", size = 20, angle = 0, hjust = 0 , vjust = 0.5, face = "plain"),
   axis.title.x = element_blank(), 
   axis.title.y = element_text(color = "black", size = 25, angle = 90, hjust = 0.5, vjust = 1, face = "plain"),
@@ -931,7 +931,7 @@ Plot the mean of all aligned traces chosen in the process above. Saves the plots
 output - average trace with SEM overlaid for each genotype.
 ```{r}
 setwd(batchFolder)
-# Violin plot for each parameter calculated
+# Mean ± SEM trace for all the traces
 My_Theme =  theme(
   axis.text.x = element_text(color = "black", size = 20, angle = 0, hjust = 0.5, vjust = 0, face = "plain"),
   axis.text.y = element_text(color = "black", size = 20, angle = 0, hjust = 0 , vjust = 0.5, face = "plain"),
@@ -1024,16 +1024,16 @@ print("Congrats! you are done. Start another batch or leave. You deserve it")
 # SECTION 5. Plot mean after manual data selection
 
 Plot the mean of all aligned traces of ONE genotype, CHOSEN BY HAND. 
-input - >genotype<.csv files. INPUT BY HAND THE DATES AND IDs.
+input - >genotype<.csv files in the home folder. 
+      - INPUT BY HAND THE DATES AND IDs to be included. Type them in the "plot.ids" variable.
 output - >genotype<_meanSEM.pdf trace with average trace and SEM overlaid.
 ">genotype<_MeanPlotData.csv" with the raw data, mean and SEM.
 ```{r}
 # ENTER INFO HERE before running
-plot.ids = list( "240819" = c(1),
-                 "240826" = c(2,3,4),
-                 "240829" = c(1)
+# example: plot.ids = list( "220125" = c(3,6,12,15,17,23,19,34,35) ,"220126" = c(3,6,34,35) )
+plot.ids = list( "220125" = c(3,6,12,15,17,23,19,34,35) 
       ) # Out of the traces in the >genotype<.#.csv files, which do you want to plot in the average?
-genotype = "mslD5" # something else? change here 
+genotype = "xxx" # something else? change here 
 leaf = "L13" # "L08"
 #####
 setwd(home)
@@ -1084,6 +1084,20 @@ meanPlot$nSEM = meanPlot$Mean -
 # save the selected traces and their mean±SEM
 write.csv(meanPlot, paste(genotype,"MeanPlotData.csv",sep = "_") , row.names = FALSE)
 
+# Mean ± SEM trace for all the traces
+My_Theme =  theme(
+  axis.text.x = element_text(color = "black", size = 20, angle = 0, hjust = 0.5, vjust = 0, face = "plain"),
+  axis.text.y = element_text(color = "black", size = 20, angle = 0, hjust = 0 , vjust = 0.5, face = "plain"),
+  axis.title.x = element_text(color = "black", size = 25, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), #element_blank(), #element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), #
+  axis.title.y = element_text(color = "black", size = 25, angle = 90, hjust = 0.5, vjust = 1, face = "plain"),
+  plot.title = element_text(color = "black", size = 20, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), # element_blank(), 
+  legend.text = element_text(size = 20),
+  legend.title = element_text(hjust = 0.1, size = 20),
+  panel.grid.major.y = element_line(), # element_blank()
+  panel.grid.minor.y = element_line(),
+  panel.grid.major.x = element_line(), #element_line()
+  panel.grid.minor.x = element_blank()) 
+
 # Plot mean and SEM
 meanOnly = data.frame(Seconds=meanPlot$Seconds, 
                           Mean=meanPlot$Mean,
@@ -1097,20 +1111,9 @@ ggplot(na.omit(meanOnly), aes(x = Seconds))+
   xlab ("Time (s)") + 
   ylim (-100,40) +
   ggtitle( paste(genotype,"_",leaf," n=",n," mean±SEM", sep = "") ) +
-  theme(
-  axis.text.x = element_text(color = "black", size = 20, angle = 0, hjust = 0.5, vjust = 0, face = "plain"),
-  axis.text.y = element_text(color = "black", size = 20, angle = 0, hjust = 0 , vjust = 0.5, face = "plain"),
-  axis.title.x = element_text(color = "black", size = 25, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), 
-  axis.title.y = element_text(color = "black", size = 25, angle = 90, hjust = 0.5, vjust = 1, face = "plain"),
-  plot.title = element_text(color = "black", size = 30, angle = 0, hjust = 0.5, vjust = 0, face = "plain"), 
-  legend.text = element_text(size = 20),
-  legend.title = element_text(hjust = 0.1, size = 20),
-  panel.grid.major.y = element_line(),
-  panel.grid.minor.y = element_line(),
-  panel.grid.major.x = element_line(), 
-  panel.grid.minor.x = element_blank() )
-ggsave(paste(genotype,"_meanSEM.pdf",sep = ""))
-    
+  My_Theme
+ggsave(paste("Mean-",genotype,"-",l,"_curated.pdf",sep = ""), width = 6, height = 5, dpi = 300 )
+
 
 ```
 
