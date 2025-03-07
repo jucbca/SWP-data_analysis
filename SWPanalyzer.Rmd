@@ -516,7 +516,18 @@ plotAndAnalyze <- function(genotypeFile){
             answer <- readline (prompt="NO RESPONSE! save as failed trace? [y];[n]    ")
             if(answer == "y"){
               SWPvalues$depol.duration = NA
+              SWPvalues$hyperpol.amplitude = NA
+              SWPvalues$hyperpolFrame = NA
+              SWPvalues$hyperpol.slope = NA
+              SWPvalues$halfmax.depol.frame = NA
+              SWPvalues$depol.slope = NA
+              SWPvalues$depol.amplitude = NA
+              SWPvalues$depolFrame = NA
+              SWPvalues$hyperpol.amplitude.2nd = NA
+              SWPvalues$depol.duration = NA
+              SWPvalues$hyperpol.duration = NA
               plotTitle = paste("FAIL",plotTitle, sep = "-")
+              
             }
           } else {
             answer <- readline (prompt="Press [y] to save; [n] to skip    ")
@@ -535,7 +546,9 @@ plotAndAnalyze <- function(genotypeFile){
               Stim = stimi
               id = IDi
               Leaf = leafi
-              
+              if( length(grep("FAIL",plotTitle)) != 0 ){
+                Stim = "FAIL"
+              }
               # save data
               fTraceSummary = rbind(fTraceSummary, cbind(Date,Stim,id,Leaf,SWPvalues) )
                 ## get rid of infinite values
@@ -615,7 +628,7 @@ This chunk will create a folder with the name of your choice. Here all the outpu
                              EDIT THE FOLDER NAME HERE
 ```{r}
 
-foldername = "output"  # Replace the text in "" with the name you want your folder to have. example: "Col-0-01.01.2000"
+foldername = "output2"  # Replace the text in "" with the name you want your folder to have. example: "Col-0-01.01.2000"
 
 # What is your control group?
 controlgroup = "Col.0" #  
