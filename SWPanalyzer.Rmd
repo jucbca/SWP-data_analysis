@@ -188,7 +188,7 @@ DataExtraction <- function(data, date){
   index = 1
   # Extract info one plant at a time.
   for( n in PlantNumber){
-  # determine the leaf 1 or 2 identity (8, 13)
+  # determine the leaf identity (8, 13)
     if( L08.exist == TRUE && L13.exist == FALSE ) {
         leaf1 = paste("L08.", n, sep = "")
         plant1 = data_frame("L08" = data[, grep(leaf1, names(data)) ])  # pick the columns w/ the data
@@ -197,7 +197,7 @@ DataExtraction <- function(data, date){
         leaf1 = paste("L13.", n, sep = "")
         plant1 = data_frame("L13" = data[, grep(leaf1, names(data)) ])  # pick the columns w/ the data
         info1 = names(data)[  grep(leaf1 , names(data))  ]
-    } else if ( L08.exist == TRUE && L13.exist == TRUE ) {# if 
+    } else if ( L08.exist == TRUE && L13.exist == TRUE ) {# if there is both L08 and 13.
         leaf1 = paste("L08.", n, sep = "")
         leaf2 = paste("L13.", n, sep = "")
         plant1 = data[, grep(leaf1, names(data)): grep(leaf2, names(data))] # pick the columns w/ the data
@@ -628,10 +628,10 @@ This chunk will create a folder with the name of your choice. Here all the outpu
                              EDIT THE FOLDER NAME HERE
 ```{r}
 
-foldername = "output2"  # Replace the text in "" with the name you want your folder to have. example: "Col-0-01.01.2000"
+foldername = "output"  # Replace the text in "" with the name you want your folder to have. example: "Col-0-01.01.2000"
 
 # What is your control group?
-controlgroup = "Col.0" #  
+controlgroup = "Col0" #  
 #####
 batchFolder = paste(home,foldername,sep="/")
 print("Continue with step 2.2") ###
@@ -746,7 +746,7 @@ if(done == 1){
 # SECTION 3. Data processing
 Input-  ">genotype<.csv" files in the batch folder, in the home directory. As created in step 2.2. 
 
-READ THIS IF YOU WANT TO RUN THIS WHOLE SECTION A SECOND TIME.  Place only the ">genotype<.csv" files in the batch folder and reset them with this chunk.
+TO RUN THIS WHOLE SECTION A SECOND TIME, READ HERE.  Place only the ">genotype<.csv" files in the batch folder and reset them with this chunk.
 ```{r}
 # Reset files to analyze again.
 setwd(batchFolder)
