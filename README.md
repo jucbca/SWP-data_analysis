@@ -1,7 +1,7 @@
 # SWP-data_analysis
 This process standardizes the phenotyping of wound-induced electric signaling in Arabidopsis thaliana plants. As shown next, the signal parameters calculated are shown as violin plots clustered by sample type (e.g. genotype or treatment). Average traces are computed and shown as mean ± SEM. 
 
-![Exemplary figure of control and treatment one.][Figure_example.pdf]
+![Exemplary figure of control and treatment.](Figure_example.pdf)
 
 The 3D printable parts (WoundingTeeth.stl) standardize the wounding stimulus, maximizing the response triggering probability.
 
