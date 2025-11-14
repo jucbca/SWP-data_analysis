@@ -3,7 +3,7 @@ This process standardizes the phenotyping of wound-induced electric signaling in
 
 ![Exemplary figure of control and treatment.](Figure_example.png)
 
-The 3D printable parts (![click to download](WoundingTeeth.stl)) standardize the wounding stimulus, maximizing the response triggering probability.
+The 3D printable parts (![click to download](https://github.com/jucbca/SWP-data_analysis/blob/main/Wounding_Grid.stl)) standardize the wounding stimulus, maximizing the response triggering probability.
 
 The R script is designed for high-throughput importing, managing, plotting and analysing extracellular electric recordings of wound-induced Slow Wave Potentials.
 
