@@ -13,3 +13,6 @@ Open SWPanalyzer.Rmd in RStudio and follow the instructions.
 NOTE:
 Details on the data structure of input and output is described for every step in the R notebook (SWPanalyzer.Rmd). 
 Given the high-throughput nature of the script, and the unknown distribution of your resulting data, final plots and STATISTICS ARE JUST A GUIDE and MUST be doubled checked manually.
+
+The results will be automatically grouped for each type of plant (e.g. genotype, treatment). The code will plot the data of individual parameters as violin plots. And a final average trace of all the recordings. See image below. All the parameters and figures can be found in the "validation dataset" folder.
+[Figure_example.pdf](https://github.com/user-attachments/files/23553764/Figure_example.pdf)
