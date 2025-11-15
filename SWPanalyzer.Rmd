@@ -456,7 +456,7 @@ plotAndAnalyze <- function(genotypeFile){
           
           
           # Trim or not (I think it needs more explanation why we should trim traces)
-          answer <- readline (prompt="Trim trace? Second+ENTER, just ENTER to skip trimming, or >n< for skipping & erasing trace  ")
+          answer <- readline (prompt="Trim trace? Indicate time (s) at which to cut + ENTER, just ENTER to skip trimming, or >n<+ENTER for skipping & erasing trace  ")
           if(nchar(answer)>0){
             if(answer == "n"){
               print("Trace not saved")
@@ -475,7 +475,7 @@ plotAndAnalyze <- function(genotypeFile){
               trace = trimTrace(trace, answer)
             } else {
               print("No valid input ")
-              answer <- readline (prompt="Trim trace? Second+ENTER, just ENTER to skip trimming, or >n< for skipping & erasing trace  ")
+              answer <- readline (prompt="Trim trace? Indicate time (s) at which to cut + ENTER, just ENTER to skip trimming, or >n<+ENTER for skipping & erasing trace  ")
             }
             
           }  
@@ -637,7 +637,7 @@ batchFolder = paste(home,foldername,sep="/")
 print("Continue with step 2.2") ###
 ```
 
-2.2. Run this to extract the data and save it in a folder with the name previously given. Ignore the errors that are shown at the end. This is due to the F1 marks in the traces. 
+2.2. Run this to extract the data and save it in a folder with the name previously given. Ignore the errors that are shown at the end. This is due to the F1 marks in the traces with which you marked the wounding event. 
 
 Troubleshooting: If this stops with an error instead of a success message, the last file printed in the console does not have the proper formatting. Check that column names fit the INPUT conditions above.
 If you run this chunk for a second time, make sure to erase the "output" folder created in the previous run. Otherwise your traces will be duplicated in the same file.
